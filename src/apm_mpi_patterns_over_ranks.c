@@ -3,14 +3,15 @@
  *
  * INF560
  *
- * Approach #1: distribute the patterns over the MPI ranks
+ * MPI Approach #1: distribute the patterns over the MPI ranks
  *
  *
  * Usage:
- * ./apm.exe 0 dna/small_chrY.fa $(cat dna/line_chrY.fa)
+ * ./apm_mpi_patterns_over_ranks 0 dna/small_chrY.fa $(cat dna/line_chrY.fa)
  *
  */
 
+#include <mpi.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +37,17 @@ int main(int argc, char **argv)
     double duration;
     int n_bytes;
     int *n_matches;
+
+    int rank, size;
+
+    /* MPI Initialization */
+    MPI_Init(&argc, &argv);
+
+    /* Get the rank of the current task and the number
+     * of MPI processe
+     */
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     /* Check number of arguments */
     if (argc < 4)

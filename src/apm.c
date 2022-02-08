@@ -2,7 +2,14 @@
  * APPROXIMATE PATTERN MATCHING
  *
  * INF560
+ *
+ * Sequential version
+ *
+ * Usage:
+ * ./apm 0 dna/small_chrY.fa $(cat dna/line_chrY.fa)
+ *
  */
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
