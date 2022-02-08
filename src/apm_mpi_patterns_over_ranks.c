@@ -148,6 +148,8 @@ int main(int argc, char **argv)
             return -1;
         }
         printf("\n(Rank %d) Sent buf=%s\n", rank, buf);
+
+        // TODO: MPIScatter the patterns array -- pattern sizes vary; look into Scatterv!
     }
     else
     {
