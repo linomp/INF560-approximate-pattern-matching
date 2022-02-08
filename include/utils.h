@@ -10,6 +10,8 @@
 
 #define APM_DEBUG 0
 
+// TODO: fix bug found by Paolo & reported to prof. ; did not find sol. on slack..
+
 char *
 read_input_file(char *filename, int *size)
 {
@@ -63,11 +65,11 @@ read_input_file(char *filename, int *size)
         return NULL;
     }
 
-#if APM_DEBUG
-    printf("Number of read bytes: %d\n", n_bytes);
-#endif
-
     *size = n_bytes;
+
+#if APM_DEBUG
+    printf("Number of read bytes: %d\n", *size);
+#endif
 
     close(fd);
 

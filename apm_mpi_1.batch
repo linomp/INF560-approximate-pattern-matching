@@ -1,0 +1,9 @@
+#!/bin/bash
+
+#SBATCH -n 4
+#SBATCH -N 1
+
+# srun -n 4 -N 1 apm_mpi_1.batch
+
+#mpirun ./apm_mpi_patterns_over_ranks 0 dna/small_chrY.fa $(cat dna/line_10.fa) $(cat dna/line_20.fa) $(cat dna/line_non_existent.fa)
+mpirun ./apm_mpi_patterns_over_ranks 0 dna/line_chrY.fa ABC
