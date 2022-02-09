@@ -18,3 +18,8 @@ Approaches:
     ```
 
 2. Distribution of the processing of one pattern among the ranks
+
+
+## TO-DO: 
+- Add bugfix from issue found by Paolo & reported to prof. (solution on slack?) 
+- Add Paolo's approach
