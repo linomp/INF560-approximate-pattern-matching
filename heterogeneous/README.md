@@ -1,4 +1,4 @@
-[<-- go back](../README.md)
+[<-- go back](../)
 
 # Heterogeneous (MPI + OpenMP + CUDA)
 
