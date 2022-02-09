@@ -38,8 +38,8 @@ int main(int argc, char **argv)
     int *n_matches;
 
     int mpi_call_result;
-
-    int rank, size;
+    MPI_Status status;
+    int rank, world_size;
     int local_matches;
 
     /* MPI Initialization */
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
      * of MPI processe
      */
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     /* Parallelism Idea :
      *
@@ -83,9 +83,9 @@ int main(int argc, char **argv)
         nb_patterns = argc - 3;
 
         // make sure there are as many processes as patterns (without counting master)
-        if (nb_patterns > (size - 1))
+        if (nb_patterns != (world_size - 1))
         {
-            printf("You need at least %d processes for %d patterns\n", nb_patterns + 1, nb_patterns);
+            printf("You need %d processes for %d patterns\n", nb_patterns + 1, nb_patterns);
             return 1;
         }
 
@@ -140,13 +140,20 @@ int main(int argc, char **argv)
             return 1;
         }
 
+        /* Timer start (from the moment data distribution begins)*/
+        t1 = MPI_Wtime();
+
         // Send size of buffer
+        n_bytes++;
+        buf[n_bytes - 1] = '\0';
         mpi_call_result = MPI_Bcast(&n_bytes, 1, MPI_INT, 0, MPI_COMM_WORLD);
         if (!mpi_call_result == MPI_SUCCESS)
         {
             return 1;
         }
+#if APM_DEBUG
         printf("\n(Rank %d) Sent n_bytes=%d\n", rank, n_bytes);
+#endif
 
         // send content of buffer
         mpi_call_result = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -154,28 +161,50 @@ int main(int argc, char **argv)
         {
             return 1;
         }
+#if APM_DEBUG
         printf("\n(Rank %d) Sent buf=%s\n", rank, buf);
+#endif
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         // TODO: MPI_Scatterv the patterns array
+        for (i = 0; i < nb_patterns; i++)
+        {
+            int dest_rank = i + 1;                       // skip master process
+            int pattern_length = strlen(pattern[i]) + 1; // account for '\0'
+            pattern[pattern_length - 1] = '\0';
+            // printf("Sending pattern=%s // len=%d ; dest=%d\n", pattern[i], pattern_length, dest_rank);
 
-        /* Timer start (from the moment all data is made available to Workers)*/
-        t1 = MPI_Wtime();
+            mpi_call_result = MPI_Ssend(&pattern_length, 1, MPI_INT, dest_rank, 0, MPI_COMM_WORLD);
+            if (!mpi_call_result == MPI_SUCCESS)
+            {
+                return 1;
+            }
 
-        MPI_Status status;
+            mpi_call_result = MPI_Ssend(pattern[i], pattern_length, MPI_BYTE, dest_rank, 0, MPI_COMM_WORLD);
+            if (!mpi_call_result == MPI_SUCCESS)
+            {
+                return 1;
+            }
+        }
+
         int results_received = 0;
         int temp;
-        while (results_received < (size - 1))
+        while (results_received < (world_size - 1))
         {
             MPI_Recv(&temp, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
             results_received++;
+#if APM_DEBUG
             printf("Message from rank %d: %d\n", status.MPI_SOURCE, temp);
-            n_matches[status.MPI_SOURCE] = temp;
+#endif
+            int processed_pattern_idx = status.MPI_SOURCE - 1;
+            n_matches[processed_pattern_idx] = temp;
         }
 
         /* Timer stop (when results from all Workers are received) */
         t2 = MPI_Wtime();
 
-        printf("(Rank %d) - Total APM Computation time: %f s\n", rank, t2 - t1);
+        printf("(Rank %d) - Total time using %d workers: %f s\n", rank, world_size, t2 - t1);
 
         for (i = 0; i < nb_patterns; i++)
         {
@@ -193,10 +222,14 @@ int main(int argc, char **argv)
         {
             return 1;
         }
+#if APM_DEBUG
         printf("\n(Rank %d) Received n_bytes=%d\n", rank, n_bytes);
+#endif
 
-        // allocate space for buffer
+// allocate space for buffer
+#if APM_DEBUG
         printf("\n(Rank %d) allocating %d bytes\n", rank, n_bytes * sizeof(char));
+#endif
         buf = (char *)malloc(n_bytes * sizeof(char));
         if (buf == NULL)
         {
@@ -209,72 +242,96 @@ int main(int argc, char **argv)
         {
             return 1;
         }
-        printf("\n(Rank %d) Received buf=%s\n", rank, buf);
-
-        // TODO: receive pattern to look for (Scatterv)
-
-        // TODO: remove this and begin processing (replace looping over all patterns)
-        if (0)
-        {
-
-            /* Timer start */
-            t1 = MPI_Wtime();
-
-            /* Check each pattern one by one */
-            for (i = 0; i < nb_patterns; i++)
-            {
-                int size_pattern = strlen(pattern[i]);
-                int *column;
-
-                /* Initialize the number of matches to 0 */
-                n_matches[i] = 0;
-
-                column = (int *)malloc((size_pattern + 1) * sizeof(int));
-                if (column == NULL)
-                {
-                    fprintf(stderr, "Error: unable to allocate memory for column (%ldB)\n",
-                            (size_pattern + 1) * sizeof(int));
-                    return 1;
-                }
-
-                /* Traverse the input data up to the end of the file */
-                for (j = 0; j < n_bytes; j++)
-                {
-                    int distance = 0;
-                    int size;
-
+        buf[n_bytes] = '\0';
 #if APM_DEBUG
-                    if (j % 100 == 0)
-                    {
-                        printf("Procesing byte %d (out of %d)\n", j, n_bytes);
-                    }
+        printf("\n(Rank %d) Received buf=%s\n", rank, buf);
 #endif
 
-                    size = size_pattern;
-                    if (n_bytes - j < size_pattern)
-                    {
-                        size = n_bytes - j;
-                    }
+        MPI_Barrier(MPI_COMM_WORLD);
 
-                    distance = levenshtein(pattern[i], &buf[j], size, column);
+        // TODO: receive pattern to look for (Scatterv)
+        // Receive size of pattern
+        int pattern_length;
+        mpi_call_result = MPI_Recv(&pattern_length, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        if (!mpi_call_result == MPI_SUCCESS)
+        {
+            return 1;
+        }
+#if APM_DEBUG
+        printf("\n(Rank %d) Received pattern_length=%d\n", rank, pattern_length);
+#endif
 
-                    if (distance <= approx_factor)
-                    {
-                        n_matches[i]++;
-                    }
-                }
-
-                free(column);
-            }
-
-            /* Timer stop */
-            t2 = MPI_Wtime();
-
-            printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
+        // Allocate space for pattern
+        char *my_pattern = (char *)malloc(pattern_length * sizeof(char));
+        if (my_pattern == NULL)
+        {
+            return 1;
         }
 
+        // Receive content of pattern
+        mpi_call_result = MPI_Recv(my_pattern, pattern_length, MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        if (!mpi_call_result == MPI_SUCCESS)
+        {
+            return 1;
+        }
+#if APM_DEBUG
+        printf("\n(Rank %d) Received pattern=%s\n", rank, my_pattern);
+#endif
+
+        // Begin Processing assigned pattern
+        /* Timer start */
+        t1 = MPI_Wtime();
+
+        /* Check assigned pattern */
+        int size_pattern = strlen(my_pattern);
+        int *column;
+
+        /* Initialize the number of matches to 0 */
+        local_matches = 0;
+
+        column = (int *)malloc((size_pattern + 1) * sizeof(int));
+        if (column == NULL)
+        {
+            fprintf(stderr, "Error: unable to allocate memory for column (%ldB)\n",
+                    (size_pattern + 1) * sizeof(int));
+            return 1;
+        }
+
+        /* Traverse the input data up to the end of the file */
+        for (j = 0; j < n_bytes; j++)
+        {
+            int distance = 0;
+            int size;
+
+#if APM_DEBUG
+            if (j % 100 == 0)
+            {
+                printf("Procesing byte %d (out of %d)\n", j, n_bytes);
+            }
+#endif
+
+            size = size_pattern;
+            if (n_bytes - j < size_pattern)
+            {
+                size = n_bytes - j;
+            }
+
+            distance = levenshtein(my_pattern, &buf[j], size, column);
+
+            if (distance <= approx_factor)
+            {
+                local_matches++;
+            }
+        }
+
+        free(column);
+
+        /* Timer stop */
+        t2 = MPI_Wtime();
+
+        printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
+
         // TODO: Send results to master process
-        local_matches = rank;
         MPI_Send(&local_matches, 1, MPI_INT, 0, rank, MPI_COMM_WORLD);
     }
 

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# make clean && make all && srun -n 4 -N 1 apm_mpi_1.batch
+mpirun ./apm_patterns_over_ranks 0 dna/easy.fa 123 456 789
