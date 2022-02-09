@@ -4,4 +4,4 @@
 
 Approaches:
 
-1. Distribute the patterns over the MPI ranks & parallelize the processing of a pattern within a rank. [[Code](./src/apm_patterns_over_ranks.c)]
+1. First MPI-then OpenMP: distribute the patterns over the MPI ranks & spawn an OpenMP team within every MPI rank. [[Code](./src/apm_patterns_over_ranks.c)]
