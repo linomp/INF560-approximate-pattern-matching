@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# make clean && make all && srun -n 4 -N 1 apm_mpi_1.batch
+mpirun ./apm 0 ../dna/small_chrY_x100.fa $(cat dna/line_10.fa) $(cat dna/line_20.fa) $(cat dna/line_non_existent.fa)
+
