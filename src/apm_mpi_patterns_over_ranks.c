@@ -34,9 +34,10 @@ int main(int argc, char **argv)
     int i, j;
     char *buf;
     double t1, t2;
-    double duration;
     int n_bytes;
     int *n_matches;
+
+    int mpi_call_result;
 
     int rank, size;
 
@@ -53,6 +54,8 @@ int main(int argc, char **argv)
      *
      * MPI_Broadcast the buf array (the input database)
      * MPI_Scatter the pattern array (the patterns to search)
+     * MPI_Gather in the master process
+     * master process reports results
      *
      */
 
@@ -128,31 +131,53 @@ int main(int argc, char **argv)
                     nb_patterns * sizeof(int));
             return 1;
         }
-    }
 
-    // Send/Receive size of buffer
-    int res = MPI_Bcast(&n_bytes, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    if (!res == MPI_SUCCESS)
-    {
-        return -1;
-    }
+        // Send size of buffer
+        mpi_call_result = MPI_Bcast(&n_bytes, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if (!mpi_call_result == MPI_SUCCESS)
+        {
+            return -1;
+        }
+        printf("\n(Rank %d) Sent n_bytes=%d\n", rank, n_bytes);
 
-    printf("\n(Rank %d) - n_bytes=%d\n", rank, n_bytes);
-
-    if (rank == 0)
-    {
         // send content of buffer
-        int res = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
-        if (!res == MPI_SUCCESS)
+        mpi_call_result = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
+        if (!mpi_call_result == MPI_SUCCESS)
         {
             return -1;
         }
         printf("\n(Rank %d) Sent buf=%s\n", rank, buf);
 
         // TODO: MPIScatter the patterns array -- pattern sizes vary; look into Scatterv!
+
+        MPI_Finalize();
+
+        return 0;
+
+        /*****
+         * END MAIN LOOP
+         ******/
+
+        // TODO: Gather all ?  then report matches fround by every worker
+
+        for (i = 0; i < nb_patterns; i++)
+        {
+            printf("Number of matches for pattern <%.40s>: %d\n",
+                   pattern[i], n_matches[i]);
+        }
     }
     else
     {
+        // Worker Processes
+
+        // Receive size of buffer
+        mpi_call_result = MPI_Bcast(&n_bytes, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if (!mpi_call_result == MPI_SUCCESS)
+        {
+            return -1;
+        }
+        printf("\n(Rank %d) Received n_bytes=%d\n", rank, n_bytes);
+
         // allocate space for buffer
         printf("\n(Rank %d) allocating %d bytes\n", rank, n_bytes * sizeof(char));
         buf = (char *)malloc(n_bytes * sizeof(char));
@@ -162,94 +187,78 @@ int main(int argc, char **argv)
         }
 
         // get content of buffer
-        int res = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
-        if (!res == MPI_SUCCESS)
+        mpi_call_result = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
+        if (!mpi_call_result == MPI_SUCCESS)
         {
             return -1;
         }
         printf("\n(Rank %d) Received buf=%s\n", rank, buf);
-    }
 
-    MPI_Finalize();
+        // TODO: receive pattern to look for (Scatterv)
 
-    return 0;
+        MPI_Finalize();
 
-    // TODO: remove this and continue with rest of implementation
+        return 0;
 
-    /*****
-     * BEGIN MAIN LOOP
-     ******/
-
-    /* Timer start */
-    // gettimeofday(&t1, NULL);
-    t1 = MPI_Wtime();
-
-    /* Check each pattern one by one */
-    for (i = 0; i < nb_patterns; i++)
-    {
-        int size_pattern = strlen(pattern[i]);
-        int *column;
-
-        /* Initialize the number of matches to 0 */
-        n_matches[i] = 0;
-
-        column = (int *)malloc((size_pattern + 1) * sizeof(int));
-        if (column == NULL)
+        // TODO: remove this and begin processing (replace looping over all patterns)
+        if (0)
         {
-            fprintf(stderr, "Error: unable to allocate memory for column (%ldB)\n",
-                    (size_pattern + 1) * sizeof(int));
-            return 1;
-        }
 
-        /* Traverse the input data up to the end of the file */
-        for (j = 0; j < n_bytes; j++)
-        {
-            int distance = 0;
-            int size;
+            /* Timer start */
+            t1 = MPI_Wtime();
+
+            /* Check each pattern one by one */
+            for (i = 0; i < nb_patterns; i++)
+            {
+                int size_pattern = strlen(pattern[i]);
+                int *column;
+
+                /* Initialize the number of matches to 0 */
+                n_matches[i] = 0;
+
+                column = (int *)malloc((size_pattern + 1) * sizeof(int));
+                if (column == NULL)
+                {
+                    fprintf(stderr, "Error: unable to allocate memory for column (%ldB)\n",
+                            (size_pattern + 1) * sizeof(int));
+                    return 1;
+                }
+
+                /* Traverse the input data up to the end of the file */
+                for (j = 0; j < n_bytes; j++)
+                {
+                    int distance = 0;
+                    int size;
 
 #if APM_DEBUG
-            if (j % 100 == 0)
-            {
-                printf("Procesing byte %d (out of %d)\n", j, n_bytes);
-            }
+                    if (j % 100 == 0)
+                    {
+                        printf("Procesing byte %d (out of %d)\n", j, n_bytes);
+                    }
 #endif
 
-            size = size_pattern;
-            if (n_bytes - j < size_pattern)
-            {
-                size = n_bytes - j;
+                    size = size_pattern;
+                    if (n_bytes - j < size_pattern)
+                    {
+                        size = n_bytes - j;
+                    }
+
+                    distance = levenshtein(pattern[i], &buf[j], size, column);
+
+                    if (distance <= approx_factor)
+                    {
+                        n_matches[i]++;
+                    }
+                }
+
+                free(column);
             }
 
-            distance = levenshtein(pattern[i], &buf[j], size, column);
+            /* Timer stop */
+            t2 = MPI_Wtime();
 
-            if (distance <= approx_factor)
-            {
-                n_matches[i]++;
-            }
+            printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
         }
-
-        free(column);
-    }
-
-    /* Timer stop */
-    // gettimeofday(&t2, NULL);
-
-    // duration = (t2.tv_sec - t1.tv_sec) + ((t2.tv_usec - t1.tv_usec) / 1e6);
-
-    // printf("APM done in %lf s\n", duration);
-
-    t2 = MPI_Wtime();
-
-    printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
-
-    /*****
-     * END MAIN LOOP
-     ******/
-
-    for (i = 0; i < nb_patterns; i++)
-    {
-        printf("Number of matches for pattern <%.40s>: %d\n",
-               pattern[i], n_matches[i]);
     }
 
     MPI_Finalize();
