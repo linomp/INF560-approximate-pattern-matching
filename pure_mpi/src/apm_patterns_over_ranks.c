@@ -40,6 +40,7 @@ int main(int argc, char **argv)
     int mpi_call_result;
 
     int rank, size;
+    int local_matches;
 
     /* MPI Initialization */
     MPI_Init(&argc, &argv);
@@ -80,6 +81,13 @@ int main(int argc, char **argv)
 
         /* Get the number of patterns that the user wants to search for */
         nb_patterns = argc - 3;
+
+        // make sure there are as many processes as patterns (without counting master)
+        if (nb_patterns > (size - 1))
+        {
+            printf("You need at least %d processes for %d patterns\n", nb_patterns + 2, nb_patterns + 1);
+            return 1;
+        }
 
         /* Fill the pattern array */
         pattern = (char **)malloc(nb_patterns * sizeof(char *));
@@ -148,17 +156,10 @@ int main(int argc, char **argv)
         }
         printf("\n(Rank %d) Sent buf=%s\n", rank, buf);
 
-        // TODO: MPIScatter the patterns array -- pattern sizes vary; look into Scatterv!
+        // TODO: MPI_Scatterv the patterns array
 
-        MPI_Finalize();
-
-        return 0;
-
-        /*****
-         * END MAIN LOOP
-         ******/
-
-        // TODO: Gather all ?  then report matches fround by every worker
+        // TODO: MPI_Gather, then report matches found by every worker
+        MPI_Gather(&local_matches, 1, MPI_INT, n_matches, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
         for (i = 0; i < nb_patterns; i++)
         {
@@ -195,10 +196,6 @@ int main(int argc, char **argv)
         printf("\n(Rank %d) Received buf=%s\n", rank, buf);
 
         // TODO: receive pattern to look for (Scatterv)
-
-        MPI_Finalize();
-
-        return 0;
 
         // TODO: remove this and begin processing (replace looping over all patterns)
         if (0)
@@ -259,6 +256,10 @@ int main(int argc, char **argv)
 
             printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
         }
+
+        // TODO: Gather to send results to master process
+        local_matches = rank;
+        MPI_Gather(&local_matches, 1, MPI_INT, n_matches, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
 
     MPI_Finalize();
