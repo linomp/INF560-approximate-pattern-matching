@@ -46,19 +46,10 @@ int main(int argc, char **argv)
     MPI_Init(&argc, &argv);
 
     /* Get the rank of the current task and the number
-     * of MPI processe
+     * of MPI processes
      */
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
-    /* Parallelism Idea :
-     *
-     * MPI_Broadcast the buf array (the input database)
-     * MPI_Scatter the pattern array (the patterns to search)
-     * MPI_Gather in the master process
-     * master process reports results
-     *
-     */
 
     if (rank == 0)
     {
@@ -167,7 +158,7 @@ int main(int argc, char **argv)
 
         MPI_Barrier(MPI_COMM_WORLD);
 
-        // TODO: MPI_Scatterv the patterns array
+        // Distribute the patterns to search
         for (i = 0; i < nb_patterns; i++)
         {
             int dest_rank = i + 1;                       // skip master process
@@ -249,7 +240,6 @@ int main(int argc, char **argv)
 
         MPI_Barrier(MPI_COMM_WORLD);
 
-        // TODO: receive pattern to look for (Scatterv)
         // Receive size of pattern
         int pattern_length;
         mpi_call_result = MPI_Recv(&pattern_length, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
@@ -331,7 +321,6 @@ int main(int argc, char **argv)
 
         printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
 
-        // TODO: Send results to master process
         MPI_Send(&local_matches, 1, MPI_INT, 0, rank, MPI_COMM_WORLD);
     }
 
