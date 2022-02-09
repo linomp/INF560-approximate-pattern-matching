@@ -1,4 +1,4 @@
-[<-- go back](../README.md)
+[<-- go back](../)
 
 # Approximate Pattern Matching - Distributed Memory (MPI)
 
