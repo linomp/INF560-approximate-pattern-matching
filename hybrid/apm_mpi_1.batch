@@ -1,6 +1,6 @@
 #!/bin/bash
 
 # make clean && make all && srun -n 4 -N 1 apm_mpi_1.batch
-mpirun ./apm_patterns_over_ranks 0 ../dna/small_chrY_x100.fa $(cat dna/line_10.fa) $(cat dna/line_20.fa) $(cat dna/line_non_existent.fa)
+mpirun ./apm_patterns_over_ranks 0 ../dna/small_chrY_x100.fa $(cat ../dna/line_10.fa) $(cat ../dna/line_20.fa) $(cat ../dna/line_non_existent.fa)
 
 #TODO understand, add flags for cores, nodes, etc
