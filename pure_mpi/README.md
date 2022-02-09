@@ -9,10 +9,10 @@ Approaches:
     ```
     Procedure followed :
     
-    - MPI_Broadcast the input database
-    - MPI_Scatterv the patterns to search
-    - MPI_Gather in the Master process
-    - Master process reports results
+    - Master Process broadcasts the input database with MPI_Broadcast
+    - Master Process distributes the patterns to search with MPI_Scatterv
+    - Worker processes send their local results to Master with MPI_Send
+    - Master process collects results with MPI_Recv and then reports
     ```
 
 2. Distribution of the processing of one pattern among the ranks

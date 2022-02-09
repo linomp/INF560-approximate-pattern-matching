@@ -85,7 +85,7 @@ int main(int argc, char **argv)
         // make sure there are as many processes as patterns (without counting master)
         if (nb_patterns > (size - 1))
         {
-            printf("You need at least %d processes for %d patterns\n", nb_patterns + 2, nb_patterns + 1);
+            printf("You need at least %d processes for %d patterns\n", nb_patterns + 1, nb_patterns);
             return 1;
         }
 
@@ -121,7 +121,7 @@ int main(int argc, char **argv)
             strncpy(pattern[i], argv[i + 3], (l + 1));
         }
 
-        printf("Approximate Pattern Mathing: "
+        printf("Approximate Pattern Matching: "
                "looking for %d pattern(s) in file %s w/ distance of %d\n",
                nb_patterns, filename, approx_factor);
 
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
         mpi_call_result = MPI_Bcast(&n_bytes, 1, MPI_INT, 0, MPI_COMM_WORLD);
         if (!mpi_call_result == MPI_SUCCESS)
         {
-            return -1;
+            return 1;
         }
         printf("\n(Rank %d) Sent n_bytes=%d\n", rank, n_bytes);
 
@@ -152,14 +152,30 @@ int main(int argc, char **argv)
         mpi_call_result = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
         if (!mpi_call_result == MPI_SUCCESS)
         {
-            return -1;
+            return 1;
         }
         printf("\n(Rank %d) Sent buf=%s\n", rank, buf);
 
         // TODO: MPI_Scatterv the patterns array
 
-        // TODO: MPI_Gather, then report matches found by every worker
-        MPI_Gather(&local_matches, 1, MPI_INT, n_matches, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        /* Timer start (from the moment all data is made available to Workers)*/
+        t1 = MPI_Wtime();
+
+        MPI_Status status;
+        int results_received = 0;
+        int temp;
+        while (results_received < (size - 1))
+        {
+            MPI_Recv(&temp, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+            results_received++;
+            printf("Message from rank %d: %d\n", status.MPI_SOURCE, temp);
+            n_matches[status.MPI_SOURCE] = temp;
+        }
+
+        /* Timer stop (when results from all Workers are received) */
+        t2 = MPI_Wtime();
+
+        printf("(Rank %d) - Total APM Computation time: %f s\n", rank, t2 - t1);
 
         for (i = 0; i < nb_patterns; i++)
         {
@@ -175,7 +191,7 @@ int main(int argc, char **argv)
         mpi_call_result = MPI_Bcast(&n_bytes, 1, MPI_INT, 0, MPI_COMM_WORLD);
         if (!mpi_call_result == MPI_SUCCESS)
         {
-            return -1;
+            return 1;
         }
         printf("\n(Rank %d) Received n_bytes=%d\n", rank, n_bytes);
 
@@ -191,7 +207,7 @@ int main(int argc, char **argv)
         mpi_call_result = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
         if (!mpi_call_result == MPI_SUCCESS)
         {
-            return -1;
+            return 1;
         }
         printf("\n(Rank %d) Received buf=%s\n", rank, buf);
 
@@ -257,9 +273,9 @@ int main(int argc, char **argv)
             printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
         }
 
-        // TODO: Gather to send results to master process
+        // TODO: Send results to master process
         local_matches = rank;
-        MPI_Gather(&local_matches, 1, MPI_INT, n_matches, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Send(&local_matches, 1, MPI_INT, 0, rank, MPI_COMM_WORLD);
     }
 
     MPI_Finalize();
