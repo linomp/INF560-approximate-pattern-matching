@@ -14,7 +14,7 @@ Approaches:
     - Worker processes send their local results to Master with MPI_Send
     - Master process collects results with MPI_Recv and then reports
 
-    * limitation: Currently capable of processing exactly 1 process per pattern (no round-robin scheme implemented)
+    * limitation: Currently capable of processing exactly 1 pattern per process (no round-robin/dynamic scheme implemented)
     ```
 
 2. Distribution of the processing of one pattern among the ranks
