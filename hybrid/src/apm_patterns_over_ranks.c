@@ -83,6 +83,7 @@ int main(int argc, char **argv)
         nb_patterns = argc - 3;
 
         // make sure there are as many processes as patterns (without counting master)
+        // TODO: add some sort of round robin or load balancing to support more patterns and distribute
         if (nb_patterns != (world_size - 1))
         {
             printf("You need %d processes for %d patterns\n", nb_patterns + 1, nb_patterns);
@@ -298,6 +299,7 @@ int main(int argc, char **argv)
         }
 
 /* Traverse the input data up to the end of the file */
+// TODO: data flows? which vars should be private? parallel region inside levenshtein?
 #pragma omp parallel
         {
 #pragma omp for schedule(static)
