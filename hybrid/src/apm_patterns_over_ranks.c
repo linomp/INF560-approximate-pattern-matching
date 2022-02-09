@@ -51,15 +51,6 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    /* Parallelism Idea :
-     *
-     * MPI_Broadcast the buf array (the input database)
-     * MPI_Scatter the pattern array (the patterns to search)
-     * MPI_Gather in the master process
-     * master process reports results
-     *
-     */
-
     if (rank == 0)
     {
         // Master process
