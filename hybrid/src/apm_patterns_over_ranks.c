@@ -7,9 +7,6 @@
  *                     parallelize the processing of a pattern within a rank
  *
  *
- * Usage:
- * ./apm_mpi_patterns_over_ranks 0 dna/small_chrY.fa $(cat dna/line_chrY.fa)
- *
  */
 
 #include <mpi.h>

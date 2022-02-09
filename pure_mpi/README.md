@@ -5,7 +5,7 @@
 
 Approaches:
 
-1. Distribution of the patterns over the MPI ranks
+1. Distribution of the patterns over the MPI ranks. [[Code](./src/apm_patterns_over_ranks.c)]
     ```
     Procedure followed :
     

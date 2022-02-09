@@ -2,4 +2,6 @@
 
 # Hybrid - Shared & Distributed Memory (MPI + OpenMP)
 
-// TO-DO
+Approaches:
+
+1. Distribute the patterns over the MPI ranks & parallelize the processing of a pattern within a rank. [[Code](./src/apm_patterns_over_ranks.c)]
