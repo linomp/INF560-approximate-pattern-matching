@@ -292,7 +292,7 @@ int main(int argc, char **argv)
 #pragma omp parallel
         {
 #pragma omp for schedule(static)
-            for (j = 0; j < n_bytes; j++)
+            for(j = 0;  j < n_bytes - approx_factor; j++)
             {
                 int distance = 0;
                 int size;
