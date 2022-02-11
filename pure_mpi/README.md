@@ -21,5 +21,4 @@ Approaches:
 
 
 ## TO-DO: 
-- Add bugfix from issue found by Paolo & reported to prof. (solution on slack?) 
 - Add Paolo's approach
