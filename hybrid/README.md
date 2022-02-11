@@ -9,8 +9,7 @@ Approaches:
 
 
 ## TO-DO: 
-- Add bugfix from issue found by Paolo & reported to prof. (solution on slack?)
-- Profile the code (tool?) (base case = 1 MPI task)
+- Profile the code (base case = 1 MPI task)
 - Add correct resource allocation flags in .batch files (-n -N -c)
 - Add OpenMP driven by profiling (currently added a parallel region but without any criteria)
 - Apply OpenMP best practices: Lecture 6 slide # 66
