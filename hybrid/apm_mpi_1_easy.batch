@@ -1,7 +1,0 @@
-#!/bin/bash
-
-#SBATCH -n 4
-
-mpirun ./apm_patterns_over_ranks 0 ../dna/easy.fa 123 456 789
-
-#make all && salloc -n 4 mpirun ./apm_patterns_over_ranks 0 ../dna/easy.fa 123 456 789

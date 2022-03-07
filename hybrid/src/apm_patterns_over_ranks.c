@@ -117,9 +117,11 @@ int main(int argc, char **argv)
             strncpy(pattern[i], argv[i + 3], (l + 1));
         }
 
+#if APM_DEBUG
         printf("Approximate Pattern Matching: "
                "looking for %d pattern(s) in file %s w/ distance of %d\n",
                nb_patterns, filename, approx_factor);
+#endif
 
         buf = read_input_file(filename, &n_bytes);
         if (buf == NULL)
@@ -198,9 +200,9 @@ int main(int argc, char **argv)
 
         /* Timer stop (when results from all Workers are received) */
         t2 = MPI_Wtime();
-
+#if APM_DEBUG
         printf("(Rank %d) - Total time using %d workers: %f s\n", rank, world_size, t2 - t1);
-
+#endif
         for (i = 0; i < nb_patterns; i++)
         {
             printf("Number of matches for pattern <%.40s>: %d\n",
@@ -295,6 +297,7 @@ int main(int argc, char **argv)
 // TODO: data flows? which vars should be private? parallel region inside levenshtein?
 #pragma omp parallel
         {
+            // printf("Hello MPI %d (%d) & OpenMP %d (%d)\n", rank, world_size, omp_get_thread_num(), omp_get_num_threads());
 #pragma omp for schedule(static)
             for (j = 0; j < n_bytes - approx_factor; j++)
             {
@@ -328,7 +331,7 @@ int main(int argc, char **argv)
         /* Timer stop */
         t2 = MPI_Wtime();
 
-        printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
+        // printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
 
         MPI_Send(&local_matches, 1, MPI_INT, 0, rank, MPI_COMM_WORLD);
     }

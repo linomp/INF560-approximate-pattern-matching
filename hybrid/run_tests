@@ -1,0 +1,33 @@
+
+root_dir=.
+test_data_dir=$root_dir/test_script_data
+data_dir=$root_dir/dna
+
+# re-build if needed
+make
+
+# First test: easy input data
+easy_input(){
+    local out_dir=$1
+    salloc -n 4 mpirun $root_dir/apm_patterns_over_ranks 0 $data_dir/easy.fa 123 456 789 > $out_dir
+}
+
+# Base case: pure mpi (1 omp thread)
+OMP_NUM_THREADS=1 easy_input $test_data_dir/easy_expected
+# Hybrid: >1 omp thread
+OMP_NUM_THREADS=${1:-1} easy_input $test_data_dir/easy_output
+
+# Check if pure mpi and hybrid gave same results
+diff $test_data_dir/easy_expected $test_data_dir/easy_output
+
+
+# Complex test: larger input data, same procedure as above
+complex_input(){
+    local out_dir=$1
+    salloc -n 4 mpirun $root_dir/apm_patterns_over_ranks 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) > $out_dir
+}
+
+OMP_NUM_THREADS=1 complex_input $test_data_dir/complex_expected
+OMP_NUM_THREADS=${1:-1} complex_input $test_data_dir/complex_output
+
+diff $test_data_dir/complex_expected $test_data_dir/complex_output
