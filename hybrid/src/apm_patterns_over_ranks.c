@@ -51,6 +51,10 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
+#if APM_DEBUG
+    printf("World size: %d | My rank: %d\n", world_size, rank);
+#endif
+
     if (rank == 0)
     {
         // Master process
@@ -292,7 +296,7 @@ int main(int argc, char **argv)
 #pragma omp parallel
         {
 #pragma omp for schedule(static)
-            for(j = 0;  j < n_bytes - approx_factor; j++)
+            for (j = 0; j < n_bytes - approx_factor; j++)
             {
                 int distance = 0;
                 int size;
