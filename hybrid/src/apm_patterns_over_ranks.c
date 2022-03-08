@@ -295,7 +295,7 @@ int main(int argc, char **argv)
 
 /* Traverse the input data up to the end of the file */
 // TODO: data flows? which vars should be private? parallel region inside levenshtein?
-#pragma omp parallel default(none) private(column) shared(my_pattern, buf, local_matches, n_bytes, approx_factor, pattern_size)
+#pragma omp parallel default(none) private(column, j) shared(my_pattern, buf, local_matches, n_bytes, approx_factor, pattern_size)
         {
 
             column = (int *)malloc((pattern_size + 1) * sizeof(int));

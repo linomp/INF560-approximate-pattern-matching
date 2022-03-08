@@ -3,6 +3,8 @@ root_dir=.
 test_data_dir=$root_dir/test_script_data
 data_dir=$root_dir/dna
 
+test_iterations=3
+
 # re-build if needed
 make
 
@@ -10,6 +12,7 @@ make
 validate(){
     # Simply to color output
     local green="\033[0;32m"
+    local red="\033[0;31m"
     local clear="\033[0m"
 
     local DIFF=$(diff $1 $2)
@@ -17,12 +20,13 @@ validate(){
     then
         echo -e "${green}result OK${clear}"
     else
+        echo -e "${red}fail${clear}"
         diff $1 $2
     fi    
 }
 
 # First test: easy input data
-echo "Running easy input test"
+echo -e "\nRunning easy input test"
 easy_input(){
     local out_dir=$1
     salloc -Q -n 4 mpirun $root_dir/apm_patterns_over_ranks 0 $data_dir/easy.fa 123 456 789 > $out_dir
@@ -30,21 +34,28 @@ easy_input(){
 
 # Base case: pure mpi (1 omp thread)
 OMP_NUM_THREADS=1 easy_input $test_data_dir/easy_expected
-# Hybrid: >1 omp thread
-OMP_NUM_THREADS=${1:-1} easy_input $test_data_dir/easy_output
 
-# Check if pure mpi and hybrid gave same results
-validate $test_data_dir/easy_expected $test_data_dir/easy_output
+# Hybrid: >1 omp thread
+for ((i=1;i<=$test_iterations;i++)); do
+    echo "Test iteration $i"
+    OMP_NUM_THREADS=${1:-1} easy_input $test_data_dir/easy_output
+    # Check if pure mpi and hybrid gave same results
+    validate $test_data_dir/easy_expected $test_data_dir/easy_output
+done
+
 
 
 # Complex test: larger input data, same procedure as above
-echo "Running complex input test"
+echo -e "\nRunning complex input test"
 complex_input(){
     local out_dir=$1
     salloc -Q -n 4 mpirun $root_dir/apm_patterns_over_ranks 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) > $out_dir
 }
 
 OMP_NUM_THREADS=1 complex_input $test_data_dir/complex_expected
-OMP_NUM_THREADS=${1:-1} complex_input $test_data_dir/complex_output
 
-validate $test_data_dir/complex_expected $test_data_dir/complex_output
+for ((i=1;i<=$test_iterations;i++)); do
+    echo "Test iteration $i"
+    OMP_NUM_THREADS=${1:-1} complex_input $test_data_dir/complex_output
+    validate $test_data_dir/complex_expected $test_data_dir/complex_output
+done

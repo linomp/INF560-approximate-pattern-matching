@@ -9,6 +9,7 @@ Approaches:
 
 ## TO-DO: 
 - Fix Issue: result not consistent across runs & number of openmp threads - sometimes correct, sometimes correct
+    - probably due to "borders" of domain partitioning
 - Profile the code (base case = 1 MPI task)
 - Add OpenMP driven by profiling (currently added a parallel region but without any criteria)
 - Apply OpenMP best practices: Lecture 6 slide # 66
