@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     char *filename;
     int approx_factor = 0;
     int nb_patterns = 0;
-    int i, j;
+    int i;
     char *buf;
     double t1, t2;
     int n_bytes;
@@ -272,11 +272,11 @@ int main(int argc, char **argv)
         }
 #if APM_DEBUG
         printf("\n(Rank %d) Received pattern=%s\n", rank, my_pattern);
+        /* Timer start */
+        t1 = MPI_Wtime();
 #endif
 
         // Begin Processing assigned pattern
-        /* Timer start */
-        t1 = MPI_Wtime();
 
         /* Check assigned pattern */
         int pattern_size = strlen(my_pattern);
@@ -285,22 +285,16 @@ int main(int argc, char **argv)
         /* Initialize the number of matches to 0 */
         local_matches = 0;
 
-        /*column = (int *)malloc((pattern_size + 1) * sizeof(int));
-        if (column == NULL)
-        {
-            fprintf(stderr, "Error: unable to allocate memory for column (%ldB)\n",
-                    (pattern_size + 1) * sizeof(int));
-            return 1;
-        }*/
-
 /* Traverse the input data up to the end of the file */
 // TODO: data flows? which vars should be private? parallel region inside levenshtein?
-#pragma omp parallel default(none) private(column, j) shared(my_pattern, buf, local_matches, n_bytes, approx_factor, pattern_size)
+#pragma omp parallel default(none) firstprivate(column) shared(my_pattern, buf, local_matches, n_bytes, approx_factor, pattern_size)
         {
+            int j;
 
             column = (int *)malloc((pattern_size + 1) * sizeof(int));
+            // TODO: error handling??
 
-#pragma omp for schedule(static)
+#pragma omp for schedule(dynamic)
             for (j = 0; j < n_bytes - approx_factor; j++)
             {
                 int distance = 0;
@@ -330,10 +324,11 @@ int main(int argc, char **argv)
 
         free(column);
 
+#if APM_DEBUG
         /* Timer stop */
         t2 = MPI_Wtime();
-
-        // printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
+        printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
+#endif
 
         MPI_Send(&local_matches, 1, MPI_INT, 0, rank, MPI_COMM_WORLD);
     }

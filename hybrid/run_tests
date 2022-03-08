@@ -4,7 +4,7 @@ test_data_dir=$root_dir/test_script_data
 data_dir=$root_dir/dna
 
 apm_executable=apm_patterns_over_ranks
-test_iterations=3
+test_iterations=10
 
 # re-build if needed
 make
