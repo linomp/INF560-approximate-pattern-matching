@@ -279,25 +279,27 @@ int main(int argc, char **argv)
         t1 = MPI_Wtime();
 
         /* Check assigned pattern */
-        int size_pattern = strlen(my_pattern);
+        int pattern_size = strlen(my_pattern);
         int *column;
 
         /* Initialize the number of matches to 0 */
         local_matches = 0;
 
-        column = (int *)malloc((size_pattern + 1) * sizeof(int));
+        /*column = (int *)malloc((pattern_size + 1) * sizeof(int));
         if (column == NULL)
         {
             fprintf(stderr, "Error: unable to allocate memory for column (%ldB)\n",
-                    (size_pattern + 1) * sizeof(int));
+                    (pattern_size + 1) * sizeof(int));
             return 1;
-        }
+        }*/
 
 /* Traverse the input data up to the end of the file */
 // TODO: data flows? which vars should be private? parallel region inside levenshtein?
-#pragma omp parallel
+#pragma omp parallel default(none) private(column) shared(my_pattern, buf, local_matches, n_bytes, approx_factor, pattern_size)
         {
-            // printf("Hello MPI %d (%d) & OpenMP %d (%d)\n", rank, world_size, omp_get_thread_num(), omp_get_num_threads());
+
+            column = (int *)malloc((pattern_size + 1) * sizeof(int));
+
 #pragma omp for schedule(static)
             for (j = 0; j < n_bytes - approx_factor; j++)
             {
@@ -311,8 +313,8 @@ int main(int argc, char **argv)
                 }
 #endif
 
-                size = size_pattern;
-                if (n_bytes - j < size_pattern)
+                size = pattern_size;
+                if (n_bytes - j < pattern_size)
                 {
                     size = n_bytes - j;
                 }

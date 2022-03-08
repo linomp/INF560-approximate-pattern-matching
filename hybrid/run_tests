@@ -6,10 +6,26 @@ data_dir=$root_dir/dna
 # re-build if needed
 make
 
+# Function to compare outputs
+validate(){
+    # Simply to color output
+    local green="\033[0;32m"
+    local clear="\033[0m"
+
+    local DIFF=$(diff $1 $2)
+    if [ "$DIFF" == "" ] 
+    then
+        echo -e "${green}result OK${clear}"
+    else
+        diff $1 $2
+    fi    
+}
+
 # First test: easy input data
+echo "Running easy input test"
 easy_input(){
     local out_dir=$1
-    salloc -n 4 mpirun $root_dir/apm_patterns_over_ranks 0 $data_dir/easy.fa 123 456 789 > $out_dir
+    salloc -Q -n 4 mpirun $root_dir/apm_patterns_over_ranks 0 $data_dir/easy.fa 123 456 789 > $out_dir
 }
 
 # Base case: pure mpi (1 omp thread)
@@ -18,16 +34,17 @@ OMP_NUM_THREADS=1 easy_input $test_data_dir/easy_expected
 OMP_NUM_THREADS=${1:-1} easy_input $test_data_dir/easy_output
 
 # Check if pure mpi and hybrid gave same results
-diff $test_data_dir/easy_expected $test_data_dir/easy_output
+validate $test_data_dir/easy_expected $test_data_dir/easy_output
 
 
 # Complex test: larger input data, same procedure as above
+echo "Running complex input test"
 complex_input(){
     local out_dir=$1
-    salloc -n 4 mpirun $root_dir/apm_patterns_over_ranks 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) > $out_dir
+    salloc -Q -n 4 mpirun $root_dir/apm_patterns_over_ranks 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) > $out_dir
 }
 
 OMP_NUM_THREADS=1 complex_input $test_data_dir/complex_expected
 OMP_NUM_THREADS=${1:-1} complex_input $test_data_dir/complex_output
 
-diff $test_data_dir/complex_expected $test_data_dir/complex_output
+validate $test_data_dir/complex_expected $test_data_dir/complex_output
