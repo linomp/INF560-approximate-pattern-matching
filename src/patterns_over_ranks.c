@@ -21,12 +21,9 @@
 
 #include "utils.h"
 
-char *read_input_file(char *filename, int *size);
-
-int levenshtein(char *s1, char *s2, int len, int *column);
-
-int main(int argc, char **argv)
+int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 {
+
     char **pattern;
     char *filename;
     int approx_factor = 0;
@@ -39,17 +36,7 @@ int main(int argc, char **argv)
 
     int mpi_call_result;
     MPI_Status status;
-    int rank, world_size;
     int local_matches;
-
-    /* MPI Initialization */
-    MPI_Init(&argc, &argv);
-
-    /* Get the rank of the current task and the number
-     * of MPI processe
-     */
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
 #if APM_DEBUG
     printf("World size: %d | My rank: %d\n", world_size, rank);
@@ -286,6 +273,7 @@ int main(int argc, char **argv)
         local_matches = 0;
 
 /* Traverse the input data up to the end of the file */
+
 // TODO: data flows? which vars should be private? parallel region inside levenshtein?
 #pragma omp parallel default(none) firstprivate(column) shared(my_pattern, buf, local_matches, n_bytes, approx_factor, pattern_size)
         {
@@ -294,6 +282,7 @@ int main(int argc, char **argv)
             column = (int *)malloc((pattern_size + 1) * sizeof(int));
             // TODO: error handling??
 
+            // TODO: make it work with static (implement ghost cells!) (# ghost cells = size of pattern -1)
 #pragma omp for schedule(dynamic)
             for (j = 0; j < n_bytes - approx_factor; j++)
             {
@@ -333,7 +322,7 @@ int main(int argc, char **argv)
         MPI_Send(&local_matches, 1, MPI_INT, 0, rank, MPI_COMM_WORLD);
     }
 
-    MPI_Finalize();
-
     return 0;
 }
+
+// TODO: implement round robin MPI
