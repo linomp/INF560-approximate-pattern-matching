@@ -6,7 +6,8 @@
  */
 
 #include <mpi.h>
-#include "patterns_over_ranks.h"
+
+int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size);
 
 int main(int argc, char **argv)
 {
