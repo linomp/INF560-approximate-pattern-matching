@@ -6,6 +6,8 @@
  * Hybrid Approach #1: distribute the patterns over the MPI ranks;
  *                     parallelize the processing of a pattern within a rank
  *
+ * To turn on processing-time reporting, add -DAPM_INFO to the CFLAGS property in Makefile
+ * Otherwise, it just outputs the pattern matching results as expected by the automated test scripts
  *
  */
 
