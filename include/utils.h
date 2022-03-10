@@ -8,8 +8,6 @@
 
 #pragma once
 
-#define APM_DEBUG 0
-
 // TODO: fix bug found by Paolo & reported to prof. ; did not find sol. on slack..
 
 char *

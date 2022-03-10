@@ -3,7 +3,7 @@ HEADER_DIR=include
 OBJ_DIR=obj
 
 MPI_CC=mpicc
-CFLAGS=-O3 -I$(HEADER_DIR) -Wall -fopenmp
+CFLAGS=-O3 -I$(HEADER_DIR) -Wall -fopenmp -DAPM_INFO
 LDFLAGS=
 
 SRC= main.c patterns_over_ranks.c

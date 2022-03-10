@@ -19,7 +19,19 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#include <stdbool.h>
+
 #include "utils.h"
+
+void broadcast_check_result(int *value)
+{
+    /* The Master Rank will use this function to broadcast all others that something wrong,
+     * so they can return as well and the main function will call MPI_Finalize().
+     *
+     * This is needed because we decided to move the processing strategies to separate functions.
+     */
+    MPI_Bcast(value, 1, MPI_INT, 0, MPI_COMM_WORLD);
+}
 
 int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 {
@@ -38,7 +50,9 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
     MPI_Status status;
     int local_matches;
 
-#if APM_DEBUG
+    int checks_ok = 0;
+
+#ifdef APM_DEBUG
     printf("World size: %d | My rank: %d\n", world_size, rank);
 #endif
 
@@ -52,6 +66,9 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
             printf("Usage: %s approximation_factor "
                    "dna_database pattern1 pattern2 ...\n",
                    argv[0]);
+
+            checks_ok = 0;
+            broadcast_check_result(&checks_ok);
             return 1;
         }
 
@@ -65,10 +82,12 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         nb_patterns = argc - 3;
 
         // make sure there are as many processes as patterns (without counting master)
-        // TODO: add some sort of round robin or load balancing to support more patterns and distribute
         if (nb_patterns != (world_size - 1))
         {
             printf("You need %d processes for %d patterns\n", nb_patterns + 1, nb_patterns);
+
+            checks_ok = 0;
+            broadcast_check_result(&checks_ok);
             return 1;
         }
 
@@ -79,6 +98,9 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
             fprintf(stderr,
                     "Unable to allocate array of pattern of size %d\n",
                     nb_patterns);
+
+            checks_ok = 0;
+            broadcast_check_result(&checks_ok);
             return 1;
         }
 
@@ -91,6 +113,9 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
             if (l <= 0)
             {
                 fprintf(stderr, "Error while parsing argument %d\n", i + 3);
+
+                checks_ok = 0;
+                broadcast_check_result(&checks_ok);
                 return 1;
             }
 
@@ -98,21 +123,26 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
             if (pattern[i] == NULL)
             {
                 fprintf(stderr, "Unable to allocate string of size %d\n", l);
+
+                checks_ok = 0;
+                broadcast_check_result(&checks_ok);
                 return 1;
             }
 
             strncpy(pattern[i], argv[i + 3], (l + 1));
         }
 
-#if APM_DEBUG
-        printf("Approximate Pattern Matching: "
-               "looking for %d pattern(s) in file %s w/ distance of %d\n",
+#ifdef APM_INFO
+        printf("\n\nApproximate Pattern Matching: "
+               "looking for %d pattern(s) in file %s w/ distance of %d\n\n",
                nb_patterns, filename, approx_factor);
 #endif
 
         buf = read_input_file(filename, &n_bytes);
         if (buf == NULL)
         {
+            checks_ok = 0;
+            broadcast_check_result(&checks_ok);
             return 1;
         }
 
@@ -122,31 +152,43 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         {
             fprintf(stderr, "Error: unable to allocate memory for %ldB\n",
                     nb_patterns * sizeof(int));
+
+            checks_ok = 0;
+            broadcast_check_result(&checks_ok);
             return 1;
         }
 
+        // Broadcast that checks went OK
+        checks_ok = 1;
+        broadcast_check_result(&checks_ok);
+#ifdef APM_DEBUG
+        printf("Rank %d - sent Checks OK\n", rank);
+#endif
+
+#ifdef APM_INFO
         /* Timer start (from the moment data distribution begins)*/
         t1 = MPI_Wtime();
+#endif
 
         // Send size of buffer
         n_bytes++;
         buf[n_bytes - 1] = '\0';
         mpi_call_result = MPI_Bcast(&n_bytes, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        if (!mpi_call_result == MPI_SUCCESS)
+        if (mpi_call_result != MPI_SUCCESS)
         {
             return 1;
         }
-#if APM_DEBUG
+#ifdef APM_DEBUG
         printf("\n(Rank %d) Sent n_bytes=%d\n", rank, n_bytes);
 #endif
 
         // send content of buffer
         mpi_call_result = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
-        if (!mpi_call_result == MPI_SUCCESS)
+        if (mpi_call_result != MPI_SUCCESS)
         {
             return 1;
         }
-#if APM_DEBUG
+#ifdef APM_DEBUG
         printf("\n(Rank %d) Sent buf=%s\n", rank, buf);
 #endif
 
@@ -157,16 +199,15 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
             int dest_rank = i + 1;                       // skip master process
             int pattern_length = strlen(pattern[i]) + 1; // account for '\0'
             pattern[pattern_length - 1] = '\0';
-            // printf("Sending pattern=%s // len=%d ; dest=%d\n", pattern[i], pattern_length, dest_rank);
 
             mpi_call_result = MPI_Ssend(&pattern_length, 1, MPI_INT, dest_rank, 0, MPI_COMM_WORLD);
-            if (!mpi_call_result == MPI_SUCCESS)
+            if (mpi_call_result != MPI_SUCCESS)
             {
                 return 1;
             }
 
             mpi_call_result = MPI_Ssend(pattern[i], pattern_length, MPI_BYTE, dest_rank, 0, MPI_COMM_WORLD);
-            if (!mpi_call_result == MPI_SUCCESS)
+            if (mpi_call_result != MPI_SUCCESS)
             {
                 return 1;
             }
@@ -178,17 +219,17 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         {
             MPI_Recv(&temp, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
             results_received++;
-#if APM_DEBUG
+#ifdef APM_DEBUG
             printf("Message from rank %d: %d\n", status.MPI_SOURCE, temp);
 #endif
             int processed_pattern_idx = status.MPI_SOURCE - 1;
             n_matches[processed_pattern_idx] = temp;
         }
 
+#ifdef APM_INFO
         /* Timer stop (when results from all Workers are received) */
         t2 = MPI_Wtime();
-#if APM_DEBUG
-        printf("(Rank %d) - Total time using %d workers: %f s\n", rank, world_size, t2 - t1);
+        printf("(Rank %d) - Total time using %d mpi_ranks and %d omp_thread(s) per rank: %f s\n\n", rank, world_size, atoi(getenv("OMP_NUM_THREADS")), t2 - t1);
 #endif
         for (i = 0; i < nb_patterns; i++)
         {
@@ -200,18 +241,34 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
     {
         // Worker Processes
 
+        // Receive confirmation that checks doen by master rank succeeded
+#ifdef APM_DEBUG
+        printf("Rank %d - waiting for checks result broadcast\n", rank);
+#endif
+        mpi_call_result = MPI_Bcast(&checks_ok, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if ((!checks_ok) || (mpi_call_result != MPI_SUCCESS))
+        {
+#ifdef APM_DEBUG
+            printf("Rank %d - received Checks FAILED\n", rank);
+#endif
+            return 1;
+        }
+#ifdef APM_DEBUG
+        printf("Rank %d - received Checks OK\n", rank);
+#endif
+
         // Receive size of buffer
         mpi_call_result = MPI_Bcast(&n_bytes, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        if (!mpi_call_result == MPI_SUCCESS)
+        if (mpi_call_result != MPI_SUCCESS)
         {
             return 1;
         }
-#if APM_DEBUG
+#ifdef APM_DEBUG
         printf("\n(Rank %d) Received n_bytes=%d\n", rank, n_bytes);
 #endif
 
 // allocate space for buffer
-#if APM_DEBUG
+#ifdef APM_DEBUG
         printf("\n(Rank %d) allocating %d bytes\n", rank, n_bytes * sizeof(char));
 #endif
         buf = (char *)malloc(n_bytes * sizeof(char));
@@ -222,12 +279,12 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 
         // get content of buffer
         mpi_call_result = MPI_Bcast(buf, n_bytes, MPI_BYTE, 0, MPI_COMM_WORLD);
-        if (!mpi_call_result == MPI_SUCCESS)
+        if (mpi_call_result != MPI_SUCCESS)
         {
             return 1;
         }
         buf[n_bytes] = '\0';
-#if APM_DEBUG
+#ifdef APM_DEBUG
         printf("\n(Rank %d) Received buf=%s\n", rank, buf);
 #endif
 
@@ -236,11 +293,11 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         // Receive size of pattern
         int pattern_length;
         mpi_call_result = MPI_Recv(&pattern_length, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        if (!mpi_call_result == MPI_SUCCESS)
+        if (mpi_call_result != MPI_SUCCESS)
         {
             return 1;
         }
-#if APM_DEBUG
+#ifdef APM_DEBUG
         printf("\n(Rank %d) Received pattern_length=%d\n", rank, pattern_length);
 #endif
 
@@ -253,14 +310,12 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 
         // Receive content of pattern
         mpi_call_result = MPI_Recv(my_pattern, pattern_length, MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        if (!mpi_call_result == MPI_SUCCESS)
+        if (mpi_call_result != MPI_SUCCESS)
         {
             return 1;
         }
-#if APM_DEBUG
+#ifdef APM_DEBUG
         printf("\n(Rank %d) Received pattern=%s\n", rank, my_pattern);
-        /* Timer start */
-        t1 = MPI_Wtime();
 #endif
 
         // Begin Processing assigned pattern
@@ -272,24 +327,25 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         /* Initialize the number of matches to 0 */
         local_matches = 0;
 
-/* Traverse the input data up to the end of the file */
+        /* Process the input data with team of OpenMP Threads */
 
-// TODO: data flows? which vars should be private? parallel region inside levenshtein?
-#pragma omp parallel default(none) firstprivate(column) shared(my_pattern, buf, local_matches, n_bytes, approx_factor, pattern_size)
+#pragma omp parallel default(none) private(column) firstprivate(n_bytes, approx_factor, pattern_size, my_pattern) shared(buf, local_matches)
         {
             int j;
 
             column = (int *)malloc((pattern_size + 1) * sizeof(int));
-            // TODO: error handling??
+            n_bytes = n_bytes;
+            approx_factor = approx_factor;
+            pattern_size = pattern_size;
+            my_pattern = my_pattern;
 
-            // TODO: make it work with static (implement ghost cells!) (# ghost cells = size of pattern -1)
 #pragma omp for schedule(dynamic)
             for (j = 0; j < n_bytes - approx_factor; j++)
             {
                 int distance = 0;
                 int size;
 
-#if APM_DEBUG
+#ifdef APM_DEBUG
                 if (j % 100 == 0)
                 {
                     printf("Procesing byte %d (out of %d)\n", j, n_bytes);
@@ -309,15 +365,9 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
                     local_matches++;
                 }
             }
+
+            free(column);
         }
-
-        free(column);
-
-#if APM_DEBUG
-        /* Timer stop */
-        t2 = MPI_Wtime();
-        printf("(Rank %d) APM Computation time: %f s\n", rank, t2 - t1);
-#endif
 
         MPI_Send(&local_matches, 1, MPI_INT, 0, rank, MPI_COMM_WORLD);
     }
@@ -325,4 +375,5 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
     return 0;
 }
 
-// TODO: implement round robin MPI
+// TODO: add some sort of round robin or load balancing to support more patterns than processes & viceversa
+// TODO: make it work with static (implement ghost cells!) (# ghost cells = size of pattern -1)
