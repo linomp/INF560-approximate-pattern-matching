@@ -4,7 +4,7 @@ test_data_dir=$root_dir/test_script_data
 data_dir=$root_dir/dna
 
 apm_executable=patterns_over_ranks
-test_iterations=10
+test_iterations=5
 
 # re-build if needed
 make
@@ -60,3 +60,4 @@ for ((i=1;i<=$test_iterations;i++)); do
     OMP_NUM_THREADS=${1:-1} complex_input $test_data_dir/complex_output
     validate $test_data_dir/complex_expected $test_data_dir/complex_output
 done
+
