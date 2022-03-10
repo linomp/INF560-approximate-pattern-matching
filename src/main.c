@@ -7,7 +7,9 @@
 
 #include <mpi.h>
 
-int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size);
+// The hybrid approaches implemented:
+int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size); // Lino
+// ... // Paolo
 
 int main(int argc, char **argv)
 {
