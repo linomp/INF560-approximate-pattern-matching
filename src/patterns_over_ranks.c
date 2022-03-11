@@ -372,5 +372,5 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
     return 0;
 }
 
-// TODO: add some sort of round robin or load balancing to support more patterns than processes & viceversa
+// TODO: add round robin to support more patterns than processes & viceversa
 // TODO: fix bug - patterns of different lengths w. dummy db!
