@@ -1,0 +1,11 @@
+#!/bin/bash
+
+make
+
+OMP_NUM_THREADS=1 mpirun ./patterns_over_ranks 0 ./dna/small_chrY_bigger.fa $(cat ./dna/line_10.fa) $(cat ./dna/line_20.fa) $(cat ./dna/line_non_existent.fa)
+
+OMP_NUM_THREADS=2 mpirun ./patterns_over_ranks 0 ./dna/small_chrY_bigger.fa $(cat ./dna/line_10.fa) $(cat ./dna/line_20.fa) $(cat ./dna/line_non_existent.fa)
+
+OMP_NUM_THREADS=12 mpirun ./patterns_over_ranks 0 ./dna/small_chrY_bigger.fa $(cat ./dna/line_10.fa) $(cat ./dna/line_20.fa) $(cat ./dna/line_non_existent.fa)
+
+OMP_NUM_THREADS=24 mpirun ./patterns_over_ranks 0 ./dna/small_chrY_bigger.fa $(cat ./dna/line_10.fa) $(cat ./dna/line_20.fa) $(cat ./dna/line_non_existent.fa)

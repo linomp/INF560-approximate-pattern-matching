@@ -58,40 +58,40 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
     printf("World size: %d | My rank: %d\n", world_size, rank);
 #endif
 
+    /* Check number of arguments */
+    if (argc < 4)
+    {
+        printf("Usage: %s approximation_factor "
+               "dna_database pattern1 pattern2 ...\n",
+               argv[0]);
+
+        checks_ok = 0;
+        // broadcast_check_result(&checks_ok);
+        return 1;
+    }
+
+    /* Get the distance factor */
+    approx_factor = atoi(argv[1]);
+
+    /* Grab the filename containing the target text */
+    filename = argv[2];
+
+    /* Get the number of patterns that the user wants to search for */
+    nb_patterns = argc - 3;
+
+    // make sure there are as many processes as patterns (without counting master)
+    if (nb_patterns != (world_size - 1))
+    {
+        printf("You need %d processes for %d patterns\n", nb_patterns + 1, nb_patterns);
+
+        checks_ok = 0;
+        broadcast_check_result(&checks_ok);
+        return 1;
+    }
+
     if (rank == 0)
     {
         // Master process
-
-        /* Check number of arguments */
-        if (argc < 4)
-        {
-            printf("Usage: %s approximation_factor "
-                   "dna_database pattern1 pattern2 ...\n",
-                   argv[0]);
-
-            checks_ok = 0;
-            broadcast_check_result(&checks_ok);
-            return 1;
-        }
-
-        /* Get the distance factor */
-        approx_factor = atoi(argv[1]);
-
-        /* Grab the filename containing the target text */
-        filename = argv[2];
-
-        /* Get the number of patterns that the user wants to search for */
-        nb_patterns = argc - 3;
-
-        // make sure there are as many processes as patterns (without counting master)
-        if (nb_patterns != (world_size - 1))
-        {
-            printf("You need %d processes for %d patterns\n", nb_patterns + 1, nb_patterns);
-
-            checks_ok = 0;
-            broadcast_check_result(&checks_ok);
-            return 1;
-        }
 
         /* Fill the pattern array */
         pattern = (char **)malloc(nb_patterns * sizeof(char *));
@@ -196,6 +196,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 
         MPI_Barrier(MPI_COMM_WORLD);
 
+        // Distribute the patterns
         for (i = 0; i < nb_patterns; i++)
         {
             int dest_rank = i + 1;                       // skip master process
@@ -316,56 +317,75 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         {
             return 1;
         }
+
 #ifdef APM_DEBUG
         printf("\n(Rank %d) Received pattern=%s\n", rank, my_pattern);
 #endif
 
         // Begin Processing assigned pattern
 
-        /* Check assigned pattern */
-        int pattern_size = strlen(my_pattern);
-        int *column;
-
         /* Initialize the number of matches to 0 */
         local_matches = 0;
+        int pattern_size = pattern_length - 1; // discount the null-terminator
 
         /* Process the input data with team of OpenMP Threads */
 
-#pragma omp parallel default(none) private(column) firstprivate(n_bytes, approx_factor, pattern_size, my_pattern) shared(buf, local_matches)
+#pragma omp parallel default(none) firstprivate(n_bytes, approx_factor, pattern_size, my_pattern, buf) shared(local_matches)
         {
-            int j;
-
-            column = (int *)malloc((pattern_size + 1) * sizeof(int));
             n_bytes = n_bytes;
             approx_factor = approx_factor;
             pattern_size = pattern_size;
             my_pattern = my_pattern;
+            buf = buf;
 
-#pragma omp for schedule(dynamic)
-            for (j = 0; j < n_bytes - approx_factor; j++)
-            {
-                int distance = 0;
-                int size;
+            int j, chunk_idx;
+            int chunk_size = (2 * pattern_size) - 1 + approx_factor;
+            int chunks = (n_bytes / chunk_size) + ((n_bytes % chunk_size) != 0); // Fast ceil for positive numbers (source: https://stackoverflow.com/a/14878734/8522453)
 
 #ifdef APM_DEBUG
-                if (j % 100 == 0)
-                {
-                    printf("Procesing byte %d (out of %d)\n", j, n_bytes);
-                }
+            printf("chunk size: %d\n", chunk_size);
 #endif
 
-                size = pattern_size;
-                if (n_bytes - j < pattern_size)
-                {
-                    size = n_bytes - j;
-                }
+            int *column = (int *)malloc((chunk_size + 1) * sizeof(int));
 
-                distance = levenshtein(my_pattern, &buf[j], size, column);
+#pragma omp for schedule(dynamic)
+            for (chunk_idx = 0; chunk_idx < chunks; chunk_idx++)
+            {
 
-                if (distance <= approx_factor)
+#ifdef APM_DEBUG
+                printf("chunk %d: [", chunk_idx);
+#endif
+
+                for (j = chunk_size * chunk_idx;
+                     j < (chunk_size * (chunk_idx + 1)); j++)
                 {
-                    local_matches++;
+                    int distance = 0;
+                    int size;
+
+                    if (j >= n_bytes - 1)
+                    {
+                        break;
+                    }
+#ifdef APM_DEBUG
+                    printf("%c", buf[j]);
+#endif
+
+                    size = pattern_size;
+                    if (n_bytes - j < pattern_size)
+                    {
+                        size = n_bytes - j;
+                    }
+
+                    distance = levenshtein(my_pattern, &buf[j], size, column);
+
+                    if (distance <= approx_factor)
+                    {
+                        local_matches++;
+                    }
                 }
+#ifdef APM_DEBUG
+                printf("]\n");
+#endif
             }
 
             free(column);
@@ -378,4 +398,4 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 }
 
 // TODO: add some sort of round robin or load balancing to support more patterns than processes & viceversa
-// TODO: make it work with static (implement ghost cells!) (# ghost cells = size of pattern -1)
+// TODO: fix bug - patterns of different lengths w. dummy db!

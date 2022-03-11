@@ -1,0 +1,11 @@
+#!/bin/bash
+
+make
+
+OMP_NUM_THREADS=1 mpirun ./patterns_over_ranks 0 dna/easy.fa 123 4563 78933
+
+#OMP_NUM_THREADS=12 mpirun ./patterns_over_ranks 1 dna/easy.fa 173 496 789
+
+#OMP_NUM_THREADS=12 mpirun ./patterns_over_ranks 0 dna/easy.fa 123 456 789
+
+#OMP_NUM_THREADS=24 mpirun ./patterns_over_ranks 0 dna/easy.fa 123 456 789
