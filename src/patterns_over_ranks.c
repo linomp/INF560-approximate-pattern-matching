@@ -21,8 +21,6 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include <stdbool.h>
-
 #include "utils.h"
 
 void broadcast_check_result(int *value)
@@ -305,7 +303,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 #endif
 
         // Allocate space for pattern
-        char *my_pattern = (char *)malloc(pattern_length * sizeof(char));
+        char *my_pattern = (char *)malloc((pattern_length * 2) * sizeof(char));
         if (my_pattern == NULL)
         {
             return 1;
@@ -329,65 +327,42 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         int pattern_size = pattern_length - 1; // discount the null-terminator
 
         /* Process the input data with team of OpenMP Threads */
-
-#pragma omp parallel default(none) firstprivate(n_bytes, approx_factor, pattern_size, my_pattern, buf) shared(local_matches)
+#pragma omp parallel default(none) firstprivate(n_bytes, approx_factor, pattern_size, my_pattern) shared(buf, local_matches)
         {
             n_bytes = n_bytes;
             approx_factor = approx_factor;
             pattern_size = pattern_size;
             my_pattern = my_pattern;
-            buf = buf;
 
-            int j, chunk_idx;
-            int chunk_size = (2 * pattern_size) - 1 + approx_factor;
-            int chunks = (n_bytes / chunk_size) + ((n_bytes % chunk_size) != 0); // Fast ceil for positive numbers (source: https://stackoverflow.com/a/14878734/8522453)
+            int j;
 
-#ifdef APM_DEBUG
-            printf("chunk size: %d\n", chunk_size);
-#endif
+            int chunk_size = (2 * pattern_size) - 1; // offset for ghost cells
 
             int *column = (int *)malloc((chunk_size + 1) * sizeof(int));
 
-#pragma omp for schedule(dynamic)
-            for (chunk_idx = 0; chunk_idx < chunks; chunk_idx++)
+#ifdef APM_DEBUG
+            printf("thread: %d - chunk_size: %d\n", omp_get_thread_num(), chunk_size);
+#endif
+
+#pragma omp for schedule(dynamic, chunk_size)
+            for (j = 0; j < n_bytes - approx_factor; j++)
             {
+                int distance = 0;
+                int size;
 
-#ifdef APM_DEBUG
-                printf("chunk %d: [", chunk_idx);
-#endif
-
-                for (j = chunk_size * chunk_idx;
-                     j < (chunk_size * (chunk_idx + 1)); j++)
+                size = pattern_size;
+                if (n_bytes - j < pattern_size)
                 {
-                    int distance = 0;
-                    int size;
-
-                    if (j >= n_bytes - 1)
-                    {
-                        break;
-                    }
-#ifdef APM_DEBUG
-                    printf("%c", buf[j]);
-#endif
-
-                    size = pattern_size;
-                    if (n_bytes - j < pattern_size)
-                    {
-                        size = n_bytes - j;
-                    }
-
-                    distance = levenshtein(my_pattern, &buf[j], size, column);
-
-                    if (distance <= approx_factor)
-                    {
-                        local_matches++;
-                    }
+                    size = n_bytes - j;
                 }
-#ifdef APM_DEBUG
-                printf("]\n");
-#endif
-            }
 
+                distance = levenshtein(my_pattern, &buf[j], size, column);
+
+                if (distance <= approx_factor)
+                {
+                    local_matches++;
+                }
+            }
             free(column);
         }
 
