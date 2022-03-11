@@ -29,3 +29,6 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+// TODO: validate world_size > 1 (in both of our approaches master rank does not perform work)
+// TODO: some MPI nodes/process combinations throw errors??

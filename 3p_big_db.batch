@@ -2,8 +2,14 @@
 
 make
 
-OMP_NUM_THREADS=1 mpirun ./patterns_over_ranks 0 dna/chr6_4M.fa $(cat dna/line_5.fa) $(cat dna/line_80932.fa) $(cat dna/line_non_existent.fa)
+OMP_NUM_THREADS=1 mpirun ./patterns_over_ranks 0 dna/chr6_4M.fa $(cat dna/line_5.fa) $(cat dna/line_80932.fa) $(cat dna/line_non_existent.fa) ZZZZZZZZZZZZZZZZ XXXXXXXXXXXXXXXXXXXXX KKKKKKKKKKKKKKKKKKKKK
 
-OMP_NUM_THREADS=4 mpirun ./patterns_over_ranks 0 dna/chr6_4M.fa $(cat dna/line_5.fa) $(cat dna/line_80932.fa) $(cat dna/line_non_existent.fa)
+OMP_NUM_THREADS=4 mpirun ./patterns_over_ranks 0 dna/chr6_4M.fa $(cat dna/line_5.fa) $(cat dna/line_80932.fa) $(cat dna/line_non_existent.fa) ZZZZZZZZZZZZZZZZ XXXXXXXXXXXXXXXXXXXXX KKKKKKKKKKKKKKKKKKKKK
 
-OMP_NUM_THREADS=12 mpirun ./patterns_over_ranks 0 dna/chr6_4M.fa $(cat dna/line_5.fa) $(cat dna/line_80932.fa) $(cat dna/line_non_existent.fa)
+OMP_NUM_THREADS=12 mpirun ./patterns_over_ranks 0 dna/chr6_4M.fa $(cat dna/line_5.fa) $(cat dna/line_80932.fa) $(cat dna/line_non_existent.fa) ZZZZZZZZZZZZZZZZ XXXXXXXXXXXXXXXXXXXXX KKKKKKKKKKKKKKKKKKKKK
+
+
+# Working combinations:
+# salloc -N 3 -n 2 3p_big_db.batch
+# salloc -N 6 -n 6 3p_big_db.batch
+# salloc -N 3 -n 9 3p_big_db.batch
