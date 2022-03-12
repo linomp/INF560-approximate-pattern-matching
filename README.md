@@ -4,7 +4,7 @@
 Paolo Calcagni & Lino Mediavilla
 
 
-Parallelization of the Approximate Pattern Matching problem, using 3 different paradigms:
+Parallelization of the [Approximate Pattern Matching](https://www.enseignement.polytechnique.fr/profs/informatique/Patrick.Carribault/INF560/TD/projects/INF560-projects-0.html#topic3) problem, using 3 different paradigms:
 
 - Distributed Memory (MPI)
 - Hybrid - Shared & Distributed Memory (MPI + OpenMP)
