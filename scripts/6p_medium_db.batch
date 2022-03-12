@@ -1,0 +1,21 @@
+#!/bin/bash
+
+make
+
+export apm_executable=./apm_parallel
+export data_dir=./dna
+
+OMP_NUM_THREADS=1 mpirun $apm_executable 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) ZZZZZZZZZZZZZZZZ XXXXXXXXXXXXXXXXXXXXX KKKKKKKKKKKKKKKKKKKKK
+
+OMP_NUM_THREADS=2 mpirun $apm_executable 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) ZZZZZZZZZZZZZZZZ XXXXXXXXXXXXXXXXXXXXX KKKKKKKKKKKKKKKKKKKKK
+
+OMP_NUM_THREADS=12 mpirun $apm_executable 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) ZZZZZZZZZZZZZZZZ XXXXXXXXXXXXXXXXXXXXX KKKKKKKKKKKKKKKKKKKKK
+
+OMP_NUM_THREADS=24 mpirun $apm_executable 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) ZZZZZZZZZZZZZZZZ XXXXXXXXXXXXXXXXXXXXX KKKKKKKKKKKKKKKKKKKKK
+
+
+# Working combinations:
+# salloc -N 3 -n 2 3p_medium_db.batch
+# salloc -N 3 -n 3 3p_medium_db.batch
+# salloc -N 6 -n 6 3p_medium_db.batch
+# salloc -N 3 -n 9 3p_medium_db.batch

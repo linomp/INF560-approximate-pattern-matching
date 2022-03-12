@@ -34,6 +34,4 @@ Criteria for deciding between the two approaches at runtime is documented in: [T
 
 
 ### TO-DO
-- [ ] Create folder for tests & batch scripts
-- [ ] add sequential to makefile (still actively used code)
 - [ ] Take into consideration only 1 MPI Rank (fallback to sequential? or just report error? our min. is 2)

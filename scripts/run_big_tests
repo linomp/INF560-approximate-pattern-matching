@@ -1,9 +1,7 @@
+test_data_dir=./scripts/test_outputs
+data_dir=./dna
 
-root_dir=.
-test_data_dir=$root_dir/test_script_data
-data_dir=$root_dir/dna
-
-apm_executable=patterns_over_ranks
+apm_executable=./apm_parallel
 
 # re-build if needed
 make
@@ -29,7 +27,7 @@ validate(){
 echo -e "\nRunning 4M input test"
 complex_input(){
     local out_dir=$1
-    salloc -Q -N 3 -n 6 mpirun $root_dir/$apm_executable 0 $data_dir/chr6_4M.fa $(cat $data_dir/line_5.fa) $(cat $data_dir/line_80932.fa) $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_5.fa) $(cat $data_dir/line_80932.fa) $(cat $data_dir/line_non_existent.fa) > $out_dir
+    salloc -Q -N 3 -n 6 mpirun $apm_executable 0 $data_dir/chr6_4M.fa $(cat $data_dir/line_5.fa) $(cat $data_dir/line_80932.fa) $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_5.fa) $(cat $data_dir/line_80932.fa) $(cat $data_dir/line_non_existent.fa) > $out_dir
 }
 
 OMP_NUM_THREADS=1 complex_input $test_data_dir/complex_expected

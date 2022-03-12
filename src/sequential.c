@@ -19,7 +19,7 @@
 
 #include "utils.h"
 
-int seq_main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char **pattern;
     char *filename;

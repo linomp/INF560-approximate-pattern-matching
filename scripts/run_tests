@@ -1,10 +1,8 @@
+test_data_dir=./scripts/test_outputs
+data_dir=./dna
 
-root_dir=.
-test_data_dir=$root_dir/test_script_data
-data_dir=$root_dir/dna
-
-apm_executable=patterns_over_ranks
-test_iterations=5
+apm_executable=./apm_parallel
+test_iterations=3
 
 # re-build if needed
 make
@@ -30,7 +28,7 @@ validate(){
 echo -e "\nRunning easy input test"
 easy_input(){
     local out_dir=$1
-    salloc -Q -N 3 -n 6 mpirun $root_dir/$apm_executable 0 $data_dir/easy.fa 123 456 789 > $out_dir
+    salloc -Q -N 3 -n 6 mpirun $apm_executable 0 $data_dir/easy.fa 123 456 789 > $out_dir
 }
 
 # Base case: pure mpi (1 omp thread)
@@ -50,7 +48,7 @@ done
 echo -e "\nRunning complex input test"
 complex_input(){
     local out_dir=$1
-    salloc -Q -N 2 -n 2 mpirun $root_dir/$apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) > $out_dir
+    salloc -Q -N 2 -n 2 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_20.fa) $(cat $data_dir/line_non_existent.fa) > $out_dir
 }
 
 OMP_NUM_THREADS=1 complex_input $test_data_dir/complex_expected
