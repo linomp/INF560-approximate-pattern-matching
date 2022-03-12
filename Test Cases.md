@@ -80,7 +80,7 @@ Send all the data to all the ranks.
 
 Can split the database in pieces and send every piece to each rank. (MPI Scatter?)
 
-# Overview
+# Overviews
 
 ## Paolo - Database over ranks PREFERRING MPI RANKS
 
@@ -91,7 +91,6 @@ Can split the database in pieces and send every piece to each rank. (MPI Scatter
 
 OpenMP for searching pattern in parallel.
 
-It would be useful to split it into MPI ranks.
 
 ## Lino - Pattern over ranks PREFERRING THREADS
 

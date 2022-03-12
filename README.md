@@ -22,8 +22,18 @@ Parallelization of the [Approximate Pattern Matching](https://www.enseignement.p
 
 ### 2. Database over ranks
 
-- _< description goes here >_
+- Rank 0 reads the size of the database and reads the number of processes connected.
+- Rank 0 divides the database for the number of processes - 1.
+- It's useless to divide the database in more pieces, it would only create overhead.
+- Rank 0 sends every piece at every rank.
+- Then OpenMP is used for searching pattern in parallel.
 
 ### Decision criteria
 
 Criteria for deciding between the two approaches at runtime is documented in: [Test Cases](./Test%20Cases.md)
+
+
+### TO-DO
+- [ ] Create folder for tests & batch scripts
+- [ ] add sequential to makefile (still actively used code)
+- [ ] Take into consideration only 1 MPI Rank (fallback to sequential? or just report error? our min. is 2)

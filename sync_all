@@ -1,1 +1,1 @@
-scp -r ./* lino-moises.mediavilla-ponce@angleterre.polytechnique.fr:apm
+scp -r ./* lino-moises.mediavilla-ponce@cubitus.polytechnique.fr:apm

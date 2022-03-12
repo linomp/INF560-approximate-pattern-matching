@@ -1,16 +1,11 @@
-
-#include <string.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#pragma once
-
-#define APM_DEBUG 0
-
-// TODO: fix bug found by Paolo & reported to prof. ; did not find sol. on slack..
+#include "utils.h"
 
 char *
 read_input_file(char *filename, int *size)
@@ -76,10 +71,17 @@ read_input_file(char *filename, int *size)
     return buf;
 }
 
-#define MIN3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
+// If I replace all the code of the function with {usleep(1); return 1;} we can notice that the time of execution of the program with 1 or more patterns is the same (if the number of patterns is < of threads).
+// I suspect that compiler does some weird stuff with levenshtein function since with 2 patterns the time of execution is the double even if we have 2 threads.
 
 int levenshtein(char *s1, char *s2, int len, int *column)
 {
+
+#if TESTPERFORMANCE_NO_LEVENSHTEIN
+    usleep(1);
+    return 1;
+#else
+
     unsigned int x, y, lastdiag, olddiag;
 
     for (y = 1; y <= len; y++)
@@ -101,4 +103,5 @@ int levenshtein(char *s1, char *s2, int len, int *column)
         }
     }
     return (column[len]);
+#endif
 }

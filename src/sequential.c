@@ -19,11 +19,7 @@
 
 #include "utils.h"
 
-char *read_input_file(char *filename, int *size);
-
-int levenshtein(char *s1, char *s2, int len, int *column);
-
-int main(int argc, char **argv)
+int seq_main(int argc, char **argv)
 {
     char **pattern;
     char *filename;
@@ -130,7 +126,7 @@ int main(int argc, char **argv)
         }
 
         /* Traverse the input data up to the end of the file */
-        for(j = 0;  j < n_bytes - approx_factor; j++)
+        for (j = 0; j < n_bytes - approx_factor; j++)
         {
             int distance = 0;
             int size;

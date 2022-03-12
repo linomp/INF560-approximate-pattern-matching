@@ -7,9 +7,7 @@
 
 #include <mpi.h>
 
-// The hybrid approaches implemented:
-int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size); // Lino
-// ... // Paolo
+#include "approaches.h"
 
 int main(int argc, char **argv)
 {
@@ -22,8 +20,15 @@ int main(int argc, char **argv)
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     // TODO: compute ratios and decide which hybrid approach to call
+    int res;
 
-    int res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
+#ifdef PAOLO
+    res = database_over_ranks(argc, argv, rank, world_size);
+#else
+    res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
+#endif
+
+    // Validate functions return 0, or check for error
 
     MPI_Finalize();
 

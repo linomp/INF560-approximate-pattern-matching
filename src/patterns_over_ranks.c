@@ -22,6 +22,7 @@
 #include <sys/time.h>
 
 #include "utils.h"
+#include "approaches.h"
 
 int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 {
