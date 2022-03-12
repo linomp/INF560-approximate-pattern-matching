@@ -23,16 +23,6 @@
 
 #include "utils.h"
 
-void broadcast_check_result(int *value)
-{
-    /* The Master Rank will use this function to broadcast all others that something wrong,
-     * so they can return as well and the main function will call MPI_Finalize().
-     *
-     * This is needed because we decided to move the processing strategies to separate functions.
-     */
-    // MPI_Bcast(value, 1, MPI_INT, 0, MPI_COMM_WORLD);
-}
-
 int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 {
 
@@ -321,14 +311,14 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
                 int *column = (int *)malloc((chunk_size + 1) * sizeof(int));
 
 #ifdef APM_DEBUG
-                // printf("thread: %d - chunk_size: %d\n", omp_get_thread_num(), chunk_size);
+                printf("thread: %d - chunk_size: %d\n", omp_get_thread_num(), chunk_size);
 #endif
 
 #pragma omp for schedule(dynamic, chunk_size)
                 for (j = 0; j < n_bytes - approx_factor; j++)
                 {
 #ifdef APM_DEBUG
-                    // printf("(Rank %d - Thread %d) - processing byte %d\n", rank, omp_get_thread_num(), j);
+                    printf("(Rank %d - Thread %d) - processing byte %d\n", rank, omp_get_thread_num(), j);
 #endif
                     int distance = 0;
                     int size;
