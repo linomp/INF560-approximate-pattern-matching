@@ -106,7 +106,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         }
 
 #ifdef APM_INFO
-        printf("\n\nApproximate Pattern Matching: "
+        printf("Approximate Pattern Matching: "
                "looking for %d pattern(s) in file %s w/ distance of %d\n\n",
                nb_patterns, filename, approx_factor);
 #endif
@@ -150,11 +150,11 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
         {
             return 1;
         }
-#ifdef APM_DEBUG
-        printf("\n(Rank %d) Sent buf=%s\n", rank, buf);
+#ifdef APM_DEBUG_BUF
+        printf("\n(Rank %d) Sent buf=%s\n", rank, "buffer");
 #endif
 
-        MPI_Barrier(MPI_COMM_WORLD);
+        // MPI_Barrier(MPI_COMM_WORLD);
 
         // Distribute the patterns accross available ranks (round-robin scheduling)
         for (i = 0; i < nb_patterns; i++)
@@ -182,20 +182,15 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
             }
         }
 
-        /* send a negative pattern size to tell the workers to stop */
         int dest_rank;
-        int stop_value = -1;
-        for (dest_rank = 1; dest_rank < world_size; dest_rank++)
-        {
-            MPI_Send(&stop_value, 1, MPI_INT, dest_rank, 0, MPI_COMM_WORLD);
-        }
 
         /* recv the results */
         int temp;
         for (i = 0; i < nb_patterns; i++)
         {
-            int max;
             dest_rank = 1 + (i % (world_size - 1));
+            printf("Master waiting for result from rank%d: n_matches[%d] = ?\n", dest_rank, i);
+
             MPI_Recv(&temp, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 #ifdef APM_DEBUG
             printf("Message from rank %d: n_matches[%d] = %d\n", status.MPI_SOURCE, status.MPI_TAG, temp);
@@ -204,10 +199,19 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
             n_matches[processed_pattern_idx] = temp;
         }
 
+        /* send a negative pattern size to tell the workers to stop */
+        int stop_value = -1;
+        for (dest_rank = 1; dest_rank < world_size; dest_rank++)
+        {
+            MPI_Send(&stop_value, 1, MPI_INT, dest_rank, 0, MPI_COMM_WORLD);
+        }
+
+        MPI_Barrier(MPI_COMM_WORLD);
+
 #ifdef APM_INFO
         /* Timer stop (when results from all Workers are received) */
         t2 = MPI_Wtime();
-        printf("(Rank %d) - Total time using %d mpi_ranks and %d omp_thread(s) per rank: %f s\n\n", rank, world_size, atoi(getenv("OMP_NUM_THREADS")), t2 - t1);
+        printf("\n(Rank %d) - TOTAL TIME using %d mpi_ranks and %d omp_thread(s) per rank: %f s\n\n", rank, world_size, atoi(getenv("OMP_NUM_THREADS")), t2 - t1);
 #endif
         for (i = 0; i < nb_patterns; i++)
         {
@@ -245,11 +249,11 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
             return 1;
         }
         buf[n_bytes] = '\0';
-#ifdef APM_DEBUG
-        printf("\n(Rank %d) Received buf=%s\n", rank, buf);
+#ifdef APM_DEBUG_BUF
+        printf("\n(Rank %d) Received buf=%s\n", rank, "buffer");
 #endif
 
-        MPI_Barrier(MPI_COMM_WORLD);
+        // MPI_Barrier(MPI_COMM_WORLD);
 
         // Standby: wait to receive a pattern to search
         while (1)
@@ -265,8 +269,11 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 #ifdef APM_DEBUG
             printf("\n(Rank %d) Received pattern_length=%d\n", rank, pattern_length);
 #endif
-            if (n_bytes < 0)
+            if (pattern_length < 0)
             {
+#ifdef APM_DEBUG
+                printf("\n(Rank %d) Stopping\n", rank);
+#endif
                 /* no more task */
                 break;
             }
@@ -318,7 +325,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 #pragma omp for schedule(dynamic, chunk_size)
                 for (j = 0; j < n_bytes - approx_factor; j++)
                 {
-#ifdef APM_DEBUG
+#ifdef APM_DEBUG_BYTES
                     printf("(Rank %d - Thread %d) - processing byte %d\n", rank, omp_get_thread_num(), j);
 #endif
                     int distance = 0;
@@ -345,6 +352,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size)
 #endif
             MPI_Send(&local_matches, 1, MPI_INT, 0, tag, MPI_COMM_WORLD);
         }
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 
     return 0;

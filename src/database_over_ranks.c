@@ -8,7 +8,7 @@
 #include "utils.h"
 #include "approaches.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #define DEBUGPIECEREAD 0
 #define DEBUGCHARACTERS 0
 #define DEBUGBYTEOPENMP 0
@@ -28,10 +28,12 @@ int database_over_ranks(int argc, char **argv, int myRank, int numberProcesses)
     int n_bytes;
     int *n_matches;
 
+#if DEBUG
 #pragma omp parallel
     {
         printf("Hello MPI %d (out of %d) & OpenMP %d (out of %d)\n", myRank, numberProcesses, omp_get_thread_num(), omp_get_num_threads());
     }
+#endif
 
     // Check number of arguments
     if (argc < 4)
@@ -157,7 +159,9 @@ int database_over_ranks(int argc, char **argv, int myRank, int numberProcesses)
 
             // As Rank 0, I send to the rank the info about his own piece
             MPI_Send(info, 2, MPI_INT, j, 0, MPI_COMM_WORLD);
+#if DEBUG
             printf("Rank 0. I sent to the rank %d the info.\n", j);
+#endif
         }
 
         // Initialize the number of matches to 0
@@ -194,7 +198,7 @@ int database_over_ranks(int argc, char **argv, int myRank, int numberProcesses)
         /* Timer stop and print it */
         gettimeofday(&t2, NULL);
         duration = (t2.tv_sec - t1.tv_sec) + ((t2.tv_usec - t1.tv_usec) / 1e6);
-        printf("APM done in %lf s\n", duration);
+        printf("\n(Rank %d) - TOTAL TIME using %d mpi_ranks and %d omp_thread(s) per rank: %f s\n\n", myRank, numberProcesses, atoi(getenv("OMP_NUM_THREADS")), duration);
 
         // Print the results
         for (i = 0; i < nb_patterns; i++)
@@ -217,8 +221,9 @@ int database_over_ranks(int argc, char **argv, int myRank, int numberProcesses)
         int info[2]; // 1° element: indexStartMyPiece. 2° element: indexFinishMyPieceWithoutExtra.
         MPI_Status status;
         MPI_Recv(&info, 2, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-
+#if DEBUG
         printf("Rank %d. I received info from rank 0.\n", myRank);
+#endif
 
         int indexStartMyPiece = info[0];
         int indexFinishMyPieceWithoutExtra = info[1]; // Without extra to recognize words between pieces.
@@ -328,8 +333,10 @@ int database_over_ranks(int argc, char **argv, int myRank, int numberProcesses)
                 }
                 timestampFinish = omp_get_wtime();
 
+#if DEBUG
                 double elapsedTime = timestampFinish - timestampStart;
                 printf("Time elapsed for a thread: %g.\n", elapsedTime);
+#endif
                 free(column);
             }
         }
@@ -339,7 +346,9 @@ int database_over_ranks(int argc, char **argv, int myRank, int numberProcesses)
         {
             int numberToSend = numbersOfMatch[i];
             MPI_Send(&numberToSend, 1, MPI_INT, 0, i, MPI_COMM_WORLD);
+#if DEBUG
             printf("Rank %d (out of %d). I sent the data of pattern %d\n", myRank, numberProcesses, i);
+#endif
         }
     }
     return 0;

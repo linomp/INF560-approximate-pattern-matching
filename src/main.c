@@ -19,16 +19,24 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    // TODO: compute ratios and decide which hybrid approach to call
     int res;
+    char *chosen_approach = argv[argc - 1];
 
-#ifdef PAOLO
-    res = database_over_ranks(argc, argv, rank, world_size);
-#else
-    res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
-#endif
+    // So that processing functions ignore last flag
+    argc--;
 
-    // Validate functions return 0, or check for error
+    // TODO: compute ratios and decide which hybrid approach to call
+
+    if (!strcmp(chosen_approach, "DB_OVER_RANKS"))
+    {
+        res = database_over_ranks(argc, argv, rank, world_size);
+    }
+    else if (!strcmp(chosen_approach, "PATTERNS_OVER_RANKS"))
+    {
+        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
+    }
+
+    // TODO Validate functions return 0, or check for error
 
     MPI_Finalize();
 

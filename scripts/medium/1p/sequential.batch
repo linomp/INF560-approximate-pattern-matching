@@ -1,0 +1,9 @@
+#!/bin/bash
+
+make apm_sequential
+
+export data_dir=./dna
+
+echo "Running SEQUENTIAL"
+./apm_sequential 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa)
+echo " "
