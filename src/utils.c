@@ -77,7 +77,7 @@ read_input_file(char *filename, int *size)
 int levenshtein(char *s1, char *s2, int len, int *column)
 {
 
-#ifdef TESTPERFORMANCE_NO_LEVENSHTEIN
+#if TESTPERFORMANCE_NO_LEVENSHTEIN
     usleep(1);
     return 1;
 #else
