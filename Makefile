@@ -6,7 +6,7 @@ CC=gcc
 SEQ_FLAGS=-O3 -I$(HEADER_DIR) -Wall
 
 MPI_CC=mpicc
-CFLAGS=-O3 -I$(HEADER_DIR) -Wall -fopenmp
+CFLAGS=-O3 -I$(HEADER_DIR) -Wall -fopenmp -DAPM_INFO
 LDFLAGS=
 
 SRC= main.c patterns_over_ranks.c database_over_ranks.c utils.c sequential.c
