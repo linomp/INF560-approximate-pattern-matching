@@ -1,1 +1,4 @@
+cd ./scripts
+find . -type f -print0 | xargs -0 dos2unix
+cd ../
 scp -r ./* lino-moises.mediavilla-ponce@cubitus.polytechnique.fr:apm
