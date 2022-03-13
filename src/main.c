@@ -29,6 +29,8 @@ int main(int argc, char **argv) {
         // argc-- so that processing functions ignore last flag
         res = patterns_over_ranks_hybrid(argc--, argv, rank, world_size);
     } else {
+        // Approach not provided, it must be computed
+
         int omp_threads;
         int n_patterns = argc - 3;
         int use_patterns_over_ranks = 0;
@@ -36,8 +38,6 @@ int main(int argc, char **argv) {
 #pragma omp parallel
         { omp_threads = omp_get_num_threads(); }
         printf("OMP THREADS: %d\n", omp_threads);
-
-        // Approach not selected, it must be computed
 
 #ifdef USE_GPU
         // Use MPI + OpenMP + GPU equations
@@ -55,7 +55,6 @@ int main(int argc, char **argv) {
 
         // Multiple Patterns
 
-        // Call the decided strategy
         // TODO: compute ratios and decide which hybrid approach to call
 
 #ifdef DEBUG_APPROACH_CHOSEN
@@ -63,6 +62,7 @@ int main(int argc, char **argv) {
                (use_patterns_over_ranks ? "PATTERNS_OVER_RANKS"
                                         : "DB_OVER_RANKS"));
 #endif
+        // Call the decided strategy
         if (use_patterns_over_ranks) {
             res = patterns_over_ranks_hybrid(argc--, argv, rank, world_size);
         } else {
