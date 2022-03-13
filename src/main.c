@@ -30,20 +30,44 @@ int main(int argc, char **argv) {
         res = patterns_over_ranks_hybrid(argc--, argv, rank, world_size);
     } else {
         int omp_threads;
+        int n_patterns = argc - 3;
+        int use_patterns_over_ranks = 0;
 
 #pragma omp parallel
         { omp_threads = omp_get_num_threads(); }
         printf("OMP THREADS: %d\n", omp_threads);
 
-        int n_patterns = argc - 3;
         // Approach not selected, it must be computed
 
+#ifdef USE_GPU
+        // Use MPI + OpenMP + GPU equations
+#else
+        // Use MPI + OpenMP equations
+
+        // 1 Pattern
+        if (n_patterns == 1) {
+            int active_ranks = world_size - 1;
+            int lino_lost_threads = (active_ranks - 1) * omp_threads;
+            int paolo_lost_threads = active_ranks * (omp_threads - 1);
+            use_patterns_over_ranks =
+                (lino_lost_threads < paolo_lost_threads) ? 1 : 0;
+        }
+
+        // Multiple Patterns
+
+        // Call the decided strategy
         // TODO: compute ratios and decide which hybrid approach to call
 
-#ifndef USE_GPU
-        // Use MPI + OpenMP equations
-#else
-        // Use MPI + OpenMP + GPU equations
+#ifdef DEBUG_APPROACH_CHOSEN
+        printf("Approach chosen: %s\n",
+               (use_patterns_over_ranks ? "PATTERNS_OVER_RANKS"
+                                        : "DB_OVER_RANKS"));
+#endif
+        if (use_patterns_over_ranks) {
+            res = patterns_over_ranks_hybrid(argc--, argv, rank, world_size);
+        } else {
+            res = database_over_ranks(argc--, argv, rank, world_size);
+        }
 #endif
     }
 
