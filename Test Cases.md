@@ -25,19 +25,19 @@ OpenMP is not active because there is just 1 pattern to search for.
 ### Multiple MPI Ranks
 #### Without GPU
 
-L<sub>l</sub> Lino Loss = (MPI_Ranks - 1) * OMP_Threads
+L<sub>l</sub> Lino Loss = (Active_MPI_Ranks - 1) * OMP_Threads
 
-L<sub>p</sub> Paolo Loss = MPI_Ranks * (OMP_Threads - 1)
+L<sub>p</sub> Paolo Loss = Active_MPI_Ranks * (OMP_Threads - 1)
 
 choose min(L<sub>l</sub>, L<sub>p</sub>)
 
 #### With MPI Ranks on different nodes (GPU for each rank)
 
-Paolo GPU Loss = MPI_Ranks
-Lino GPU Loss = MPI_Ranks - 1
+Paolo GPU Loss = Active_MPI_Ranks
+Lino GPU Loss = Active_MPI_Ranks - 1
 
-L<sub>p</sub> Paolo Loss = MPI_Ranks * (((OMP_THREADS-1)*2)-1)
-L<sub>l</sub> Lino Loss = (MPI_Ranks - 1) * (OMP_Threads-1) * 2
+L<sub>p</sub> Paolo Loss = Active_MPI_Ranks * (((OMP_THREADS-1)*2)-1)
+L<sub>l</sub> Lino Loss = (Active_MPI_Ranks - 1) * (OMP_Threads-1) * 2
 choose min (L<sub>l</sub>, L<sub>p</sub>)
 
 #### With some of MPI Ranks on the same node (GPU shared for each rank)
@@ -93,7 +93,7 @@ The number of pattern is < than the threads of threads. Some threads are not use
 
 ## Cost Model
 ```
-ratioLino = MPI_Ranks/patterns:
+ratioLino = Active_MPI_Ranks/patterns:
 ratioLino = 1
 
 ratioPaolo = Threads/patterns
@@ -125,7 +125,9 @@ else if(ratioLino < 1 and ratioPaolo < 1){
 else if (ratioLino > 1 and ratioPaolo > 1){
     // Should be minimum but depends on the optimization
 }
-else if (ratioLino == 1 and ratioPaolo == 1)
+else if (ratioLino == 1 and ratioPaolo == 1){
+    processing times are equal in experiments
+}
 ```
 
 ```
