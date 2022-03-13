@@ -24,10 +24,12 @@ int main(int argc, char **argv) {
 
     if (!strcmp(chosen_approach, "DB_OVER_RANKS")) {
         // argc-- so that processing functions ignore last flag
-        res = database_over_ranks(argc--, argv, rank, world_size);
+        argc -= 1;
+        res = database_over_ranks(argc, argv, rank, world_size);
     } else if (!strcmp(chosen_approach, "PATTERNS_OVER_RANKS")) {
         // argc-- so that processing functions ignore last flag
-        res = patterns_over_ranks_hybrid(argc--, argv, rank, world_size);
+        argc -= 1;
+        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
     } else {
         // Approach not provided, it must be computed
 
@@ -64,9 +66,11 @@ int main(int argc, char **argv) {
 #endif
         // Call the decided strategy
         if (use_patterns_over_ranks) {
-            res = patterns_over_ranks_hybrid(argc--, argv, rank, world_size);
+            argc -= 1;
+            res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
         } else {
-            res = database_over_ranks(argc--, argv, rank, world_size);
+            argc -= 1;
+            res = database_over_ranks(argc, argv, rank, world_size);
         }
 #endif
     }
