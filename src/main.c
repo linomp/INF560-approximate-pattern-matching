@@ -9,8 +9,7 @@
 
 #include "approaches.h"
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int rank, world_size;
 
     /* MPI Initialization */
@@ -23,27 +22,38 @@ int main(int argc, char **argv)
     int mpi_call_result;
     char *chosen_approach = argv[argc - 1];
 
-    // So that processing functions ignore last flag
-    argc--;
+    if (!strcmp(chosen_approach, "DB_OVER_RANKS")) {
+        // argc-- so that processing functions ignore last flag
+        res = database_over_ranks(argc--, argv, rank, world_size);
+    } else if (!strcmp(chosen_approach, "PATTERNS_OVER_RANKS")) {
+        // argc-- so that processing functions ignore last flag
+        res = patterns_over_ranks_hybrid(argc--, argv, rank, world_size);
+    } else {
+        int omp_threads;
 
-    // TODO: compute ratios and decide which hybrid approach to call
+#pragma omp parallel
+        { omp_threads = omp_get_num_threads(); }
+        printf("OMP THREADS: %d\n", omp_threads);
 
-    if (!strcmp(chosen_approach, "DB_OVER_RANKS"))
-    {
-        res = database_over_ranks(argc, argv, rank, world_size);
-    }
-    else if (!strcmp(chosen_approach, "PATTERNS_OVER_RANKS"))
-    {
-        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
+        int n_patterns = argc - 3;
+        // Approach not selected, it must be computed
+
+        // TODO: compute ratios and decide which hybrid approach to call
+
+#ifndef USE_GPU
+        // Use MPI + OpenMP equations
+#else
+        // Use MPI + OpenMP + GPU equations
+#endif
     }
 
 #ifdef APM_DEBUG
-    printf("%s on Rank %d/%d returned %d\n\n", chosen_approach, rank, world_size, res);
+    printf("%s on Rank %d/%d returned %d\n\n", chosen_approach, rank,
+           world_size, res);
 #endif
 
     mpi_call_result = MPI_Finalize();
-    if (mpi_call_result != MPI_SUCCESS)
-    {
+    if (mpi_call_result != MPI_SUCCESS) {
         printf("MPI Error: %d\n", mpi_call_result);
         return 1;
     }
@@ -51,5 +61,6 @@ int main(int argc, char **argv)
     return 0;
 }
 
-// TODO: validate world_size > 1 (in both of our approaches master rank does not perform work)
+// TODO: validate world_size > 1 (in both of our approaches master rank does not
+// perform work)
 // TODO Validate processing functions return 0, or check for error

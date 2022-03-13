@@ -104,7 +104,7 @@ Patterns over ranks.
 
 ## 1 pattern with big database
 
-### Lino
+### Lino 
 
 If you have 1 rank is good.
 If you have more than one you would waste all the other ones.
@@ -123,9 +123,26 @@ With 1 rank Lino's code takes advantage of shared-memory parallelism. Threads ar
 
 #### Multiple MPI Ranks
 
+##### Without GPU
+
 L<sub>l</sub> Lino Loss = (MPI_Ranks - 1) * OMP_Threads
 L<sub>p</sub> Paolo Loss = MPI_Ranks * (OMP_Threads - 1)
 choose min (L<sub>l</sub>, L<sub>p</sub>)
+
+##### With MPI Ranks on different nodes (GPU for each rank)
+
+Paolo GPU Loss = MPI_Ranks
+Lino GPU Loss = MPI_Ranks - 1
+
+L<sub>p</sub> Paolo Loss = MPI_Ranks * (((OMP_THREADS-1)*2)-1)
+L<sub>l</sub> Lino Loss = (MPI_Ranks - 1) * (OMP_Threads-1) * 2
+choose min (L<sub>l</sub>, L<sub>p</sub>)
+
+##### With some of MPI Ranks on the same node (GPU shared for each rank)
+
+We cannot determine if the MPI ranks are on the same node, so we cannot modify our workflow to optimize the given hardware.
+Some experiment will be performed but the model won't change.
+Number of ranks larger than GPUs would result in round robin scheduling (if the user is not smart enough).
 
 #### Example
 
@@ -160,6 +177,9 @@ ratioLino = 1
 
 ratioPaolo = Threads/patterns
 ratioPaolo = 1
+
+[WITH GPU]
+ratioPaolo = ((Threads - 1) * 2)/2 ????
 
 2/4 = 0.5
 4/2
