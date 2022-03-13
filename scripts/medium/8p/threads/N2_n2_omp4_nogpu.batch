@@ -8,9 +8,9 @@ export data_dir=./dna
 export OMP_NUM_THREADS=4
 
 echo "Running PATTERNS_OVER_RANKS"
-salloc -N 2 -n 2 mpirun $apm_executable 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) "PATTERNS_OVER_RANKS"
+salloc -N 2 -n 2 mpirun $apm_executable 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) "PATTERNS_OVER_RANKS"
 echo " "
 
 echo "Running DB_OVER_RANKS"
-salloc -N 2 -n 2 mpirun $apm_executable 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) "DB_OVER_RANKS"
+salloc -N 2 -n 2 mpirun $apm_executable 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) "DB_OVER_RANKS"
 echo " "

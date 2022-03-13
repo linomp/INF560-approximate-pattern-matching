@@ -5,10 +5,10 @@ make apm_sequential
 export data_dir=./dna
 
 
-echo "Running SEQUENTIAL w/o salloc"
-./apm_sequential 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
-echo " "
+#echo "Running SEQUENTIAL w/o salloc"
+#./apm_sequential 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
+#echo " "
 
 echo "Running SEQUENTIAL w salloc"
-salloc -N 8 -n 13 ./apm_sequential 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
+salloc -N 8 -n 13 ./apm_sequential 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
 echo " "
