@@ -1,0 +1,7 @@
+# To run bash sync_all_Paolo
+
+ssh paolo.calcagni@cubitus.polytechnique.fr 'cd Desktop; rm -rf Progetto; mkdir Progetto; exit'
+
+cd ./scripts
+cd ../
+scp -r ./* paolo.calcagni@cubitus.polytechnique.fr:Desktop/Progetto
