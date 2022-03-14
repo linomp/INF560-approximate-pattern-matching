@@ -1,15 +1,12 @@
 # INF560_APM_Final_Project
 
-
 Paolo Calcagni & Lino Mediavilla
-
 
 Parallelization of the [Approximate Pattern Matching](https://www.enseignement.polytechnique.fr/profs/informatique/Patrick.Carribault/INF560/TD/projects/INF560-projects-0.html#topic3) problem, using 3 different paradigms:
 
 - Distributed Memory (MPI)
 - Hybrid - Shared & Distributed Memory (MPI + OpenMP)
 - Heterogeneous (MPI + OpenMP + CUDA)
-
 
 ## Approaches:
 
@@ -30,8 +27,7 @@ Parallelization of the [Approximate Pattern Matching](https://www.enseignement.p
 
 ### Decision criteria
 
-Criteria for deciding between the two approaches at runtime is documented in: [Test Cases](./Test%20Cases.md)
-
+Criteria for deciding between the two approaches at runtime is documented in: [Workflow](./Workflow.md)
 
 ### TO-DO
 - [ ] Take into consideration only 1 MPI Rank (fallback to sequential? or just report error? our min. is 2)
