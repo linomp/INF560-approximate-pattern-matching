@@ -28,6 +28,3 @@ Parallelization of the [Approximate Pattern Matching](https://www.enseignement.p
 ### Decision criteria
 
 Criteria for deciding between the two approaches at runtime is documented in: [Workflow](./Workflow.md)
-
-### TO-DO
-- [ ] Take into consideration only 1 MPI Rank (fallback to sequential? or just report error? our min. is 2)
