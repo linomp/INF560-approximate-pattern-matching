@@ -11,6 +11,9 @@
 
 #include "approaches.h"
 
+void getDeviceCount(int *deviceCountPtr);
+void setDevice(int rank, int deviceCount);
+
 float getRatio(float x) {
     float ratioHardwareOptimizationApproachChosen;
 
@@ -88,6 +91,12 @@ int main(int argc, char **argv) {
 
 #ifdef USE_GPU
         // Use MPI + OpenMP + GPU equations
+        int deviceCount;
+        getDeviceCount(&deviceCount);
+
+        // This function call returns 0 if there are no CUDA capable devices.
+        setDevice(rank, deviceCount);
+
 #else
         // Use MPI + OpenMP equations
         if (fabs(ratioPatterns - ratioDatabase) <= 1E-6) {
