@@ -19,3 +19,6 @@
 # SUGGESTION
 
 - [X] You may find useful what I do in my sync_all: you can automatically delete the folder in the bash script, so you don't get crazy every time.
+
+
+- for additional examples: focus on representative cases (number > 2)

@@ -10,7 +10,7 @@
 #include <cstdio>
 
 #define DEBUG_CUDA 1
-#define TESTPERFORMANCE_NO_LEVENSHTEIN 1
+#define TESTPERFORMANCE_NO_LEVENSHTEIN 0
 
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
@@ -19,19 +19,22 @@
 __global__ void ComputeMatches(char *buf, char *pattern, int *local_matches,
                                int n_bytes, int pattern_length,
                                int approx_factor) {
-    int distance = 0;
+    // Source of tip about using pragma unroll:
+    // https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#branch-predication
 
-    int j = blockDim.x * blockIdx.x + threadIdx.x;
+    // For loop inside kernel source:
+    // https://www.diehlpk.de/blog/cuda-7-forall/
+
+    int distance = 0;
+    int j;
 
 #if TESTPERFORMANCE_NO_LEVENSHTEIN
-    // unsigned int ns = 8;
-    //__nanosleep(ns);
     return;
 #else
     int *column = (int *)malloc((pattern_length + 1) * sizeof(int));
 
-    for (j = blockDim.x * blockIdx.x + threadIdx.x;
-         j < (n_bytes / blockDim.x) - approx_factor; j++) {
+    for (j = blockDim.x * blockIdx.x + threadIdx.x; j < n_bytes - approx_factor;
+         j += gridDim.x * blockDim.x) {
         int size;
 
         size = pattern_length;
@@ -42,9 +45,11 @@ __global__ void ComputeMatches(char *buf, char *pattern, int *local_matches,
         // Levenshtein
         unsigned int x, y, lastdiag, olddiag;
 
+#pragma unroll
         for (y = 1; y <= size; y++) {
             column[y] = y;
         }
+#pragma unroll
         for (x = 1; x <= size; x++) {
             column[0] = x;
             lastdiag = x - 1;
@@ -112,54 +117,3 @@ extern "C" int search_pattern_kernel(char *buf, int n_bytes, char *my_pattern,
 
     return 0;
 }
-
-/*
-#pragma omp parallel default(none)                                         \
-    firstprivate(rank, n_bytes, approx_factor, pattern_length, my_pattern, \
-                 cuda_device_exists) shared(buf, local_matches)
-{
-    rank = rank;
-
-    // Overall idea: if there is a cuda device, omp threads take on
-    // just half of the workload + "ghost cells"
-    n_bytes =
-        cuda_device_exists ? ((n_bytes / 2) + (pattern_length - 1)) :
-n_bytes;
-
-    approx_factor = approx_factor;
-    pattern_length = pattern_length;
-    my_pattern = my_pattern;
-
-    int j;
-
-    int chunk_size = (2 * pattern_length) - 1;  // offset for ghost cells
-
-    int *column = (int *)malloc((chunk_size + 1) * sizeof(int));
-
-#if APM_DEBUG
-    printf("thread: %d - chunk_size: %d\n", omp_get_thread_num(),
-chunk_size); #endif printf("Starting with local matches = %d\n",
-local_matches);
-
-#pragma omp for schedule(dynamic, chunk_size)
-    for (j = 0; j < n_bytes - approx_factor; j++) {
-#if APM_DEBUG_BYTES
-        printf("(Rank %d - Thread %d) - processing byte %d\n", rank,
-               omp_get_thread_num(), j);
-#endif
-        int distance = 0;
-        int size;
-
-        size = pattern_length;
-        if (n_bytes - j < pattern_length) {
-            size = n_bytes - j;
-        }
-
-        distance = levenshtein(my_pattern, &buf[j], size, column);
-
-        if (distance <= approx_factor) {
-            local_matches++;
-        }
-    }
-    free(column);
-}*/
