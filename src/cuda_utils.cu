@@ -5,6 +5,8 @@
 
 #include <cstdio>
 
+#define DEBUG_CUDA 1
+
 extern "C" void getDeviceCount(int *deviceCountPtr) {
     cudaError_t error_id = cudaGetDeviceCount(deviceCountPtr);
 

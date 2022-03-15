@@ -6,9 +6,11 @@ CC=gcc
 SEQ_FLAGS=-O3 -I$(HEADER_DIR) -Wall
 
 MPI_CC=mpicc
-NV_CC=nvcc
-CFLAGS=-O3 -I$(HEADER_DIR) -Wall -fopenmp -DAPM_INFO -DDEBUG_APPROACH_CHOSEN -DUSE_GPU -DDEBUG_CUDA
+CFLAGS=-O3 -I$(HEADER_DIR) -Wall -fopenmp
 LDFLAGS=-lm -lcudart -L/usr/local/cuda/lib64
+
+NV_CC=nvcc
+NV_FLAGS=-c -O3
 
 SRC= main.c patterns_over_ranks.c database_over_ranks.c utils.c sequential.c
 
@@ -35,7 +37,7 @@ patterns_over_ranks:$(OBJ)
 	$(MPI_CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 cuda_utils:
-	$(NV_CC) -c $(SRC_DIR)/cuda_utils.cu -o $(OBJ_DIR)/cuda_utils.o
+	$(NV_CC) $(NV_FLAGS) $(SRC_DIR)/cuda_utils.cu -o $(OBJ_DIR)/cuda_utils.o
 
 apm_parallel: $(OBJ)
 	$(MPI_CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(OBJ_DIR)/cuda_utils.o

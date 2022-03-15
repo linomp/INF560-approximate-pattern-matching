@@ -11,6 +11,9 @@
 
 #include "approaches.h"
 
+#define DEBUG_APPROACH_CHOSEN 1
+#define USE_GPU 1
+
 void getDeviceCount(int *deviceCountPtr);
 void setDevice(int rank, int deviceCount);
 
@@ -82,14 +85,14 @@ int main(int argc, char **argv) {
         float ratioPatterns = getRatio((float)active_ranks / (float)n_patterns);
         float ratioDatabase = getRatio((float)omp_threads / (float)n_patterns);
 
-#ifdef DEBUG_APPROACH_CHOSEN
+#if DEBUG_APPROACH_CHOSEN
         if (rank == 0) {
             printf("ratioPatterns = %lf // ratioDatabase = %lf\n",
                    ratioPatterns, ratioDatabase);
         }
 #endif
 
-#ifdef USE_GPU
+#if USE_GPU
         // Use MPI + OpenMP + GPU equations
         int deviceCount;
         getDeviceCount(&deviceCount);
@@ -115,7 +118,7 @@ int main(int argc, char **argv) {
             }
         }
 
-#ifdef DEBUG_APPROACH_CHOSEN
+#if DEBUG_APPROACH_CHOSEN
         if (rank == 0) {
             printf("Approach chosen: %s\n",
                    (use_patterns_over_ranks ? "PATTERNS_OVER_RANKS"
@@ -133,12 +136,12 @@ int main(int argc, char **argv) {
 #endif
     }
 
-#ifdef APM_DEBUG
-    printf(
-        "%s on Rank %d/%d returned %d\n\n",
-        (use_patterns_over_ranks ? "PATTERNS_OVER_RANKS" : "DB_OVER_PATTERNS"),
-        rank, world_size, res);
-#endif
+    if (res != 0) {
+        printf("%s on Rank %d/%d returned with error %d\n\n",
+               (use_patterns_over_ranks ? "PATTERNS_OVER_RANKS"
+                                        : "DB_OVER_PATTERNS"),
+               rank, world_size, res);
+    }
 
     mpi_call_result = MPI_Finalize();
     if (mpi_call_result != MPI_SUCCESS) {
