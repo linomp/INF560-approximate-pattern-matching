@@ -24,8 +24,18 @@
 #include "approaches.h"
 #include "utils.h"
 
-int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
-                               int world_size) {
+#define APM_INFO 1
+#define APM_DEBUG 0
+#define APM_DEBUG_BUF 0
+#define APM_DEBUG_ALLOC 0
+#define APM_DEBUG_BYTES 0
+
+int search_pattern_kernel(char *buf, int n_bytes, char *my_pattern,
+                          int pattern_length, int approx_factor,
+                          int *local_matches);
+
+int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
+                               int cuda_device_exists) {
     char **pattern;
     char *filename;
     int approx_factor = 0;
@@ -42,7 +52,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
 
     int tag;
 
-#ifdef APM_DEBUG
+#if APM_DEBUG
     printf("World size: %d | My rank: %d\n", world_size, rank);
 #endif
 
@@ -98,7 +108,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             strncpy(pattern[i], argv[i + 3], (l + 1));
         }
 
-#ifdef APM_INFO
+#if APM_INFO
         printf(
             "Approximate Pattern Matching: "
             "looking for %d pattern(s) in file %s w/ distance of %d\n\n",
@@ -119,7 +129,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             return 1;
         }
 
-#ifdef APM_INFO
+#if APM_INFO
         /* Timer start (from the moment data distribution begins)*/
         t1 = MPI_Wtime();
 #endif
@@ -130,7 +140,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             printf("MPI Error: %d\n", mpi_call_result);
             return 1;
         }
-#ifdef APM_DEBUG
+#if APM_DEBUG
         printf("\n(Rank %d) Sent n_bytes=%d\n", rank, n_bytes);
 #endif
 
@@ -140,7 +150,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             printf("MPI Error: %d\n", mpi_call_result);
             return 1;
         }
-#ifdef APM_DEBUG_BUF
+#if APM_DEBUG_BUF
         printf("\n(Rank %d) Sent buf=%s\n", rank, "buffer");
 #endif
 
@@ -152,7 +162,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
 
             tag = i;
 
-#ifdef APM_DEBUG
+#if APM_DEBUG
             printf("Master sending pattern %d to rank %d\n", tag, dest_rank);
 #endif
             mpi_call_result = MPI_Send(&pattern_length, 1, MPI_INT, dest_rank,
@@ -176,7 +186,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
         int temp;
         for (i = 0; i < nb_patterns; i++) {
             dest_rank = 1 + (i % (world_size - 1));
-#ifdef APM_DEBUG
+#if APM_DEBUG
             printf("Master waiting for result from rank%d: n_matches[%d] = ?\n",
                    dest_rank, i);
 #endif
@@ -187,7 +197,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
                 printf("MPI Error: %d\n", mpi_call_result);
                 return 1;
             }
-#ifdef APM_DEBUG
+#if APM_DEBUG
             printf("Message from rank %d: n_matches[%d] = %d\n",
                    status.MPI_SOURCE, status.MPI_TAG, temp);
 #endif
@@ -206,7 +216,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             }
         }
 
-#ifdef APM_INFO
+#if APM_INFO
         /* Timer stop (when results from all Workers are received) */
         t2 = MPI_Wtime();
         printf(
@@ -233,7 +243,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
         }
 
         // allocate space for buffer
-#ifdef APM_DEBUG_ALLOC
+#if APM_DEBUG_ALLOC
         printf("\n(Rank %d) allocating %d bytes\n", rank,
                n_bytes * sizeof(char));
 #endif
@@ -249,7 +259,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             return 1;
         }
 
-#ifdef APM_DEBUG_BUF
+#if APM_DEBUG_BUF
         printf("\n(Rank %d) Received buf=%s\n", rank, "buffer");
 #endif
 
@@ -264,7 +274,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
                 printf("MPI Error: %d\n", mpi_call_result);
                 return 1;
             }
-#ifdef APM_DEBUG
+#if APM_DEBUG
             printf("\n(Rank %d) Received pattern_length=%d\n", rank,
                    pattern_length);
 #endif
@@ -290,7 +300,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             }
             tag = status.MPI_TAG;
 
-#ifdef APM_DEBUG
+#if APM_DEBUG
             printf("\n(Rank %d) Received pattern=%s with tag: %d\n", rank,
                    my_pattern, tag);
 #endif
@@ -300,33 +310,38 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             /* Initialize the number of matches to 0 */
             local_matches = 0;
 
-            /* Process the input data with team of OpenMP Threads */
-#ifndef DO_PROCESSING
+            // Overall idea: if there is a cuda device, it takes on
+            // the first half of the workload + "ghost cells"
+            if (cuda_device_exists) {
+                search_pattern_kernel(buf, (n_bytes / 2) + (pattern_length - 1),
+                                      my_pattern, pattern_length, approx_factor,
+                                      &local_matches);
+            }
+
+            /* Process the input data with OpenMP Threads */
 #pragma omp parallel default(none)                                         \
-    firstprivate(rank, n_bytes, approx_factor, pattern_length, my_pattern) \
-        shared(buf, local_matches)
+    firstprivate(rank, n_bytes, approx_factor, pattern_length, my_pattern, \
+                 cuda_device_exists, buf) shared(local_matches)
             {
                 rank = rank;
                 n_bytes = n_bytes;
-                approx_factor = approx_factor;
                 pattern_length = pattern_length;
+                buf = buf;
+
+                // Overall idea: if there is a cuda device, omp threads take on
+                // just the second half of the workload + "ghost cells"
+                int starting_point = cuda_device_exists ? (n_bytes / 2) : 0;
+
+                approx_factor = approx_factor;
                 my_pattern = my_pattern;
 
                 int j;
 
-                int chunk_size =
-                    (2 * pattern_length) - 1;  // offset for ghost cells
+                int *column = (int *)malloc((pattern_length + 1) * sizeof(int));
 
-                int *column = (int *)malloc((chunk_size + 1) * sizeof(int));
-
-#ifdef APM_DEBUG
-                printf("thread: %d - chunk_size: %d\n", omp_get_thread_num(),
-                       chunk_size);
-#endif
-
-#pragma omp for schedule(dynamic, chunk_size)
-                for (j = 0; j < n_bytes - approx_factor; j++) {
-#ifdef APM_DEBUG_BYTES
+#pragma omp for schedule(static, 1)
+                for (j = starting_point; j < n_bytes - approx_factor; j++) {
+#if APM_DEBUG_BYTES
                     printf("(Rank %d - Thread %d) - processing byte %d\n", rank,
                            omp_get_thread_num(), j);
 #endif
@@ -346,9 +361,8 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
                 }
                 free(column);
             }
-#endif
 
-#ifdef APM_DEBUG
+#if APM_DEBUG
             printf("Rank %d sending result: n_matches[%d] = %d\n", rank, tag,
                    local_matches);
 #endif
@@ -360,7 +374,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             }
         }
 
-#ifdef APM_DEBUG
+#if APM_DEBUG
         printf("\n(Rank %d) Finished Loop\n", rank);
 #endif
     }

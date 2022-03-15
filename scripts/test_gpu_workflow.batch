@@ -1,0 +1,14 @@
+#!/bin/bash
+
+make
+
+export apm_executable=./apm_parallel
+export data_dir=./dna
+
+
+# 2 Active MPI_ranks, 4 threads, 4 patterns
+# expected ratioPatterns = 0 & ratioDatabase = 0 -> choose DB Over Ranks by default
+
+echo "Running WORKFLOW TEST"
+OMP_NUM_THREADS=4 salloc -N 2 -n 3 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
+echo " "

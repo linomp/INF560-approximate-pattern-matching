@@ -7,9 +7,17 @@
 
 #include <math.h>
 #include <mpi.h>
+#include <omp.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "approaches.h"
+
+#define DEBUG_APPROACH_CHOSEN 0
+#define USE_GPU 1
+
+void getDeviceCount(int *deviceCountPtr);
+void setDevice(int rank, int deviceCount);
 
 float getRatio(float x) {
     float ratioHardwareOptimizationApproachChosen;
@@ -41,7 +49,7 @@ int main(int argc, char **argv) {
 
     // In both of our approaches, the master rank only distributes the work to
     // one or more "worker" ranks, and relies on them for actual processing
-    if (world_size <= 2) {
+    if (world_size < 2) {
         if (rank == 0) {
             printf(
                 "Minimum number of MPI ranks is 2 (Master Rank is currently "
@@ -59,6 +67,12 @@ int main(int argc, char **argv) {
     char *chosen_approach = argv[argc - 1];
     int use_patterns_over_ranks = 0;
 
+    int deviceCount;
+    getDeviceCount(&deviceCount);
+
+    // This function call returns 0 if there are no CUDA capable devices.
+    setDevice(rank, deviceCount);
+
     if (!strcmp(chosen_approach, "DB_OVER_RANKS")) {
         // decrease argc so that processing functions ignore last flag
         argc -= 1;
@@ -67,7 +81,8 @@ int main(int argc, char **argv) {
         // decrease argc so that processing functions ignore last flag
         argc -= 1;
         use_patterns_over_ranks = 1;
-        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
+        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
+                                         USE_GPU && (deviceCount >= 1));
     } else {
         // Approach not provided, it must be computed
         int n_patterns = argc - 3;
@@ -79,15 +94,18 @@ int main(int argc, char **argv) {
         float ratioPatterns = getRatio((float)active_ranks / (float)n_patterns);
         float ratioDatabase = getRatio((float)omp_threads / (float)n_patterns);
 
-#ifdef DEBUG_APPROACH_CHOSEN
+#if DEBUG_APPROACH_CHOSEN
         if (rank == 0) {
             printf("ratioPatterns = %lf // ratioDatabase = %lf\n",
                    ratioPatterns, ratioDatabase);
         }
 #endif
 
-#ifdef USE_GPU
-        // Use MPI + OpenMP + GPU equations
+#if USE_GPU
+        // TODO: Use MPI + OpenMP + GPU equations
+        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
+                                         deviceCount >= 1);
+
 #else
         // Use MPI + OpenMP equations
         if (fabs(ratioPatterns - ratioDatabase) <= 1E-6) {
@@ -106,7 +124,7 @@ int main(int argc, char **argv) {
             }
         }
 
-#ifdef DEBUG_APPROACH_CHOSEN
+#if DEBUG_APPROACH_CHOSEN
         if (rank == 0) {
             printf("Approach chosen: %s\n",
                    (use_patterns_over_ranks ? "PATTERNS_OVER_RANKS"
@@ -116,7 +134,7 @@ int main(int argc, char **argv) {
         // Call the decided strategy
         if (use_patterns_over_ranks) {
             argc -= 1;
-            res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
+            res = patterns_over_ranks_hybrid(argc, argv, rank, world_size, 0);
         } else {
             argc -= 1;
             res = database_over_ranks(argc, argv, rank, world_size);
@@ -124,12 +142,12 @@ int main(int argc, char **argv) {
 #endif
     }
 
-#ifdef APM_DEBUG
-    printf(
-        "%s on Rank %d/%d returned %d\n\n",
-        (use_patterns_over_ranks ? "PATTERNS_OVER_RANKS" : "DB_OVER_PATTERNS"),
-        rank, world_size, res);
-#endif
+    if (res != 0) {
+        printf("%s on Rank %d/%d returned with error %d\n\n",
+               (use_patterns_over_ranks ? "PATTERNS_OVER_RANKS"
+                                        : "DB_OVER_PATTERNS"),
+               rank, world_size, res);
+    }
 
     mpi_call_result = MPI_Finalize();
     if (mpi_call_result != MPI_SUCCESS) {
