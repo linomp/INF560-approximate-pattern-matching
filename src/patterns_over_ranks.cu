@@ -9,8 +9,8 @@
 
 #include <cstdio>
 
-#define DEBUG_CUDA 1
-#define TESTPERFORMANCE_NO_LEVENSHTEIN 0
+#define DEBUG_CUDA 0
+#define TESTPERFORMANCE_NO_LEVENSHTEIN 1
 
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
@@ -28,9 +28,6 @@ __global__ void ComputeMatches(char *buf, char *pattern, int *local_matches,
     int distance = 0;
     int j;
 
-#if TESTPERFORMANCE_NO_LEVENSHTEIN
-    return;
-#else
     int *column = (int *)malloc((pattern_length + 1) * sizeof(int));
 
     for (j = blockDim.x * blockIdx.x + threadIdx.x; j < n_bytes - approx_factor;
@@ -64,13 +61,16 @@ __global__ void ComputeMatches(char *buf, char *pattern, int *local_matches,
 
         distance = column[size];
 
+#if TESTPERFORMANCE_NO_LEVENSHTEIN
+        continue;
+#else
         if (distance <= approx_factor) {
             (*local_matches)++;
         }
+#endif
     }
 
     free(column);
-#endif
 }
 
 extern "C" int search_pattern_kernel(char *buf, int n_bytes, char *my_pattern,
