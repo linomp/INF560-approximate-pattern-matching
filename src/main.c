@@ -13,7 +13,7 @@
 
 #include "approaches.h"
 
-#define DEBUG_APPROACH_CHOSEN 1
+#define DEBUG_APPROACH_CHOSEN 0
 #define USE_GPU 1
 
 void getDeviceCount(int *deviceCountPtr);
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
 
     // In both of our approaches, the master rank only distributes the work to
     // one or more "worker" ranks, and relies on them for actual processing
-    if (world_size <= 2) {
+    if (world_size < 2) {
         if (rank == 0) {
             printf(
                 "Minimum number of MPI ranks is 2 (Master Rank is currently "
@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
         argc -= 1;
         use_patterns_over_ranks = 1;
         res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
-                                         USE_GPU && (deviceCount > 1));
+                                         USE_GPU && (deviceCount >= 1));
     } else {
         // Approach not provided, it must be computed
         int n_patterns = argc - 3;

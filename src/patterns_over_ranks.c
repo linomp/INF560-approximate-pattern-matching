@@ -30,7 +30,9 @@
 #define APM_DEBUG_ALLOC 0
 #define APM_DEBUG_BYTES 0
 
-int search_pattern_kernel(int n_bytes);
+int search_pattern_kernel(char *buf, int n_bytes, char *my_pattern,
+                          int pattern_length, int approx_factor,
+                          int *local_matches);
 
 int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
                                int cuda_device_exists) {
@@ -308,44 +310,37 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
             /* Initialize the number of matches to 0 */
             local_matches = 0;
 
-            // TODO: call cuda kernel asynchronously
+            // Overall idea: if there is a cuda device, it takes on
+            // the first half of the workload + "ghost cells"
             if (cuda_device_exists) {
-                local_matches +=
-                    search_pattern_kernel((n_bytes / 2) + (pattern_length - 1));
+                search_pattern_kernel(buf, (n_bytes / 2) + (pattern_length - 1),
+                                      my_pattern, pattern_length, approx_factor,
+                                      &local_matches);
             }
 
             /* Process the input data with OpenMP Threads */
 #pragma omp parallel default(none)                                         \
     firstprivate(rank, n_bytes, approx_factor, pattern_length, my_pattern, \
-                 cuda_device_exists) shared(buf, local_matches)
+                 cuda_device_exists, buf) shared(local_matches)
             {
                 rank = rank;
+                n_bytes = n_bytes;
+                pattern_length = pattern_length;
+                buf = buf;
 
                 // Overall idea: if there is a cuda device, omp threads take on
-                // just half of the workload + "ghost cells"
-                n_bytes = cuda_device_exists
-                              ? ((n_bytes / 2) + (pattern_length - 1))
-                              : n_bytes;
+                // just the second half of the workload + "ghost cells"
+                int starting_point = cuda_device_exists ? (n_bytes / 2) : 0;
 
                 approx_factor = approx_factor;
-                pattern_length = pattern_length;
                 my_pattern = my_pattern;
 
                 int j;
 
-                int chunk_size =
-                    (2 * pattern_length) - 1;  // offset for ghost cells
+                int *column = (int *)malloc((pattern_length + 1) * sizeof(int));
 
-                int *column = (int *)malloc((chunk_size + 1) * sizeof(int));
-
-#if APM_DEBUG
-                printf("thread: %d - chunk_size: %d\n", omp_get_thread_num(),
-                       chunk_size);
-#endif
-                printf("Starting with local matches = %d\n", local_matches);
-
-#pragma omp for schedule(dynamic, chunk_size)
-                for (j = 0; j < n_bytes - approx_factor; j++) {
+#pragma omp for schedule(static, 1)
+                for (j = starting_point; j < n_bytes - approx_factor; j++) {
 #if APM_DEBUG_BYTES
                     printf("(Rank %d - Thread %d) - processing byte %d\n", rank,
                            omp_get_thread_num(), j);
