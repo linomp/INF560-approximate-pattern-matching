@@ -6,10 +6,17 @@ export apm_executable=./apm_parallel
 export data_dir=./dna
 
 
-echo "Running WORKFLOW TEST"
-OMP_NUM_THREADS=12 salloc -N 2 -n 2 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa)
-echo " "
+# 9 Active MPI_ranks, 5 threads, 6 patterns
+# expected ratioPatterns = 0.5 & ratioDatabase = 0.66 -> choose Patterns Over Ranks
 
 echo "Running WORKFLOW TEST"
-OMP_NUM_THREADS=1 salloc -N 2 -n 6 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa)
+OMP_NUM_THREADS=5 salloc -N 5 -n 10 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
+echo " "
+
+
+# 11 Active MPI_ranks, 5 threads, 6 patterns
+# expected ratioPatterns = 0.83 & ratioDatabase = 0.66 -> choose DB Over Ranks
+
+echo "Running WORKFLOW TEST"
+OMP_NUM_THREADS=5 salloc -N 6 -n 12 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
 echo " "

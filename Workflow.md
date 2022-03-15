@@ -99,11 +99,11 @@ There is no correlation with the number of MPI ranks: all of them are used to re
 
 ### Without GPU
 
-dimensionOfJobsPatternsOverDatabase = Active_MPI_Ranks/patterns
-dimensionOfJobsDatabaseOverDatabase = ThreadsPerRank/patterns
+dimensionOfJobsPatternsOverRanks = Active_MPI_Ranks/patterns
+dimensionOfJobsDatabaseOverRanks = ThreadsPerRank/patterns
 
 We can calculate HardwareOptimizationPatternsOverDatabase (ratioPatterns) and HardwareOptimizationDatabaseOverPatterns (ratioDatabase) in this way.
-Assume x is dimensionOfJobsPatternsOverDatabase or dimensionOfJobsDatabaseOverDatabase.
+Assume x is dimensionOfJobsPatternsOverRanks or dimensionOfJobsDatabaseOverRanks.
 
 ```
 
@@ -148,8 +148,8 @@ Assume x is dimensionOfJobsPatternsOverDatabase or dimensionOfJobsDatabaseOverDa
 
 Let's assume we have 2 MPI_ranks, 4 threads, 4 patterns and database with 100 characters.
 
-dimensionOfJobsPatternsOverDatabase = Active_MPI_Ranks/patterns = 2/4 = 0.5
-dimensionOfJobsDatabaseOverDatabase = ThreadsPerRank/patterns = 4/4 = 1
+dimensionOfJobsPatternsOverRanks = Active_MPI_Ranks/patterns = 2/4 = 0.5
+dimensionOfJobsDatabaseOverRanks = ThreadsPerRank/patterns = 4/4 = 1
 
 ratioPatterns = 0
 ratioDatabase = 0
@@ -175,8 +175,8 @@ As we can see, the execution time is the same.
 
 Let's assume we have 4 MPI_ranks, 5 threads, 6 patterns and database with 100 characters.
 
-dimensionOfJobsPatternsOverDatabase = Active_MPI_Ranks/patterns = 4/6 = 0.66
-dimensionOfJobsDatabaseOverDatabase = ThreadsPerRank/patterns = 5/6 = 0.83
+dimensionOfJobsPatternsOverRanks = Active_MPI_Ranks/patterns = 4/6 = 0.66
+dimensionOfJobsDatabaseOverRanks = ThreadsPerRank/patterns = 5/6 = 0.83
 
 ratioPatterns = 0.32
 ratioDatabase = 0.66
