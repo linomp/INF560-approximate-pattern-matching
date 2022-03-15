@@ -5,7 +5,7 @@
 
 #include <cstdio>
 
-#define DEBUG_CUDA 1
+#define DEBUG_CUDA_UTILS 1
 
 extern "C" void getDeviceCount(int *deviceCountPtr) {
     cudaError_t error_id = cudaGetDeviceCount(deviceCountPtr);
@@ -23,7 +23,7 @@ extern "C" void setDevice(int rank, int deviceCount) {
     if (deviceCount == 0) {
         printf("There are no available device(s) that support CUDA\n");
     } else {
-#ifdef DEBUG_CUDA
+#ifdef DEBUG_CUDA_UTILS
         printf(
             "Rank %d detected %d CUDA Capable device(s) - performing "
             "cudaSetDevice(0)\n",

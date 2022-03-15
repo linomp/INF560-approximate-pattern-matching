@@ -7,7 +7,9 @@
 
 #include <math.h>
 #include <mpi.h>
+#include <omp.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "approaches.h"
 
@@ -65,6 +67,12 @@ int main(int argc, char **argv) {
     char *chosen_approach = argv[argc - 1];
     int use_patterns_over_ranks = 0;
 
+    int deviceCount;
+    getDeviceCount(&deviceCount);
+
+    // This function call returns 0 if there are no CUDA capable devices.
+    setDevice(rank, deviceCount);
+
     if (!strcmp(chosen_approach, "DB_OVER_RANKS")) {
         // decrease argc so that processing functions ignore last flag
         argc -= 1;
@@ -73,7 +81,8 @@ int main(int argc, char **argv) {
         // decrease argc so that processing functions ignore last flag
         argc -= 1;
         use_patterns_over_ranks = 1;
-        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
+        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
+                                         USE_GPU && (deviceCount > 1));
     } else {
         // Approach not provided, it must be computed
         int n_patterns = argc - 3;
@@ -93,12 +102,9 @@ int main(int argc, char **argv) {
 #endif
 
 #if USE_GPU
-        // Use MPI + OpenMP + GPU equations
-        int deviceCount;
-        getDeviceCount(&deviceCount);
-
-        // This function call returns 0 if there are no CUDA capable devices.
-        setDevice(rank, deviceCount);
+        // TODO: Use MPI + OpenMP + GPU equations
+        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
+                                         deviceCount >= 1);
 
 #else
         // Use MPI + OpenMP equations
@@ -128,7 +134,7 @@ int main(int argc, char **argv) {
         // Call the decided strategy
         if (use_patterns_over_ranks) {
             argc -= 1;
-            res = patterns_over_ranks_hybrid(argc, argv, rank, world_size);
+            res = patterns_over_ranks_hybrid(argc, argv, rank, world_size, 0);
         } else {
             argc -= 1;
             res = database_over_ranks(argc, argv, rank, world_size);

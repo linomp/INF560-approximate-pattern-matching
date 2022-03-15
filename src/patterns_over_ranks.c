@@ -30,8 +30,10 @@
 #define APM_DEBUG_ALLOC 0
 #define APM_DEBUG_BYTES 0
 
-int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
-                               int world_size) {
+int search_pattern_kernel(int n_bytes);
+
+int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
+                               int cuda_device_exists) {
     char **pattern;
     char *filename;
     int approx_factor = 0;
@@ -306,13 +308,25 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
             /* Initialize the number of matches to 0 */
             local_matches = 0;
 
+            // TODO: call cuda kernel asynchronously
+            if (cuda_device_exists) {
+                local_matches +=
+                    search_pattern_kernel((n_bytes / 2) + (pattern_length - 1));
+            }
+
             /* Process the input data with OpenMP Threads */
 #pragma omp parallel default(none)                                         \
-    firstprivate(rank, n_bytes, approx_factor, pattern_length, my_pattern) \
-        shared(buf, local_matches)
+    firstprivate(rank, n_bytes, approx_factor, pattern_length, my_pattern, \
+                 cuda_device_exists) shared(buf, local_matches)
             {
                 rank = rank;
-                n_bytes = n_bytes;
+
+                // Overall idea: if there is a cuda device, omp threads take on
+                // just half of the workload + "ghost cells"
+                n_bytes = cuda_device_exists
+                              ? ((n_bytes / 2) + (pattern_length - 1))
+                              : n_bytes;
+
                 approx_factor = approx_factor;
                 pattern_length = pattern_length;
                 my_pattern = my_pattern;
@@ -328,6 +342,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank,
                 printf("thread: %d - chunk_size: %d\n", omp_get_thread_num(),
                        chunk_size);
 #endif
+                printf("Starting with local matches = %d\n", local_matches);
 
 #pragma omp for schedule(dynamic, chunk_size)
                 for (j = 0; j < n_bytes - approx_factor; j++) {
