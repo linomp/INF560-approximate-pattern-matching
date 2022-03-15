@@ -20,18 +20,10 @@ void getDeviceCount(int *deviceCountPtr);
 void setDevice(int rank, int deviceCount);
 
 float getRatio(float x) {
-    float ratioHardwareOptimizationApproachChosen;
-
-    if (x < 1) {
-        while (x <= 1) {
-            x = x * 2;
-        }
-        ratioHardwareOptimizationApproachChosen = fmod(x, 1.0);
-    } else if ((x >= 1) && (x < 2)) {
-        ratioHardwareOptimizationApproachChosen = fmod(x, 1.0);
-    } else {
-        ratioHardwareOptimizationApproachChosen = x;
+    while (x < 1) {
+        x = x * 2;
     }
+    float ratioHardwareOptimizationApproachChosen = x - 1;
 
     return ratioHardwareOptimizationApproachChosen;
 }

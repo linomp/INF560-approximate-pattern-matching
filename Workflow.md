@@ -107,18 +107,11 @@ Assume x is dimensionOfJobsPatternsOverRanks or dimensionOfJobsDatabaseOverRanks
 
 ```
 
-    if(x < 1){
-        while(x <= 1){
-            x = x * 2;
-        }
-        ratioHardwareOptimizationApproachChosen = x % 1;
+    while(x <= 1){
+        x = x * 2;
     }
-    else if(x >= 1 and x < 2){
-        ratioHardwareOptimizationApproachChosen = x % 1;
-    }
-    else{
-        ratioHardwareOptimizationApproachChosen = x;
-    }
+     
+    ratioHardwareOptimizationApproachChosen = x - 1; 
    
 ```
 

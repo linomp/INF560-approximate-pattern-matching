@@ -223,8 +223,6 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
             "\n(Rank %d) - TOTAL TIME using %d mpi_ranks and %d omp_thread(s) "
             "per rank: %f s\n\n",
             rank, world_size, atoi(getenv("OMP_NUM_THREADS")), t2 - t1);
-        // printf("\n(Rank %d) - TOTAL TIME using %d mpi_ranks and %d
-        // omp_thread(s) per rank: %f s\n\n", rank, world_size, 1, t2 - t1);
 #endif
         for (i = 0; i < nb_patterns; i++) {
             printf("Number of matches for pattern <%.40s>: %d\n", pattern[i],
@@ -321,7 +319,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
             /* Process the input data with OpenMP Threads */
 #pragma omp parallel default(none)                                         \
     firstprivate(rank, n_bytes, approx_factor, pattern_length, my_pattern, \
-                 cuda_device_exists, buf) shared(local_matches)
+                 cuda_device_exists) shared(buf, local_matches)
             {
                 rank = rank;
                 n_bytes = n_bytes;
