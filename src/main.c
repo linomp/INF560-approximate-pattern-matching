@@ -13,7 +13,7 @@
 
 #include "approaches.h"
 
-#define DEBUG_APPROACH_CHOSEN 0
+#define DEBUG_APPROACH_CHOSEN 1
 #define USE_GPU 1
 
 void getDeviceCount(int *deviceCountPtr);
@@ -96,18 +96,16 @@ int main(int argc, char **argv) {
 
 #if DEBUG_APPROACH_CHOSEN
         if (rank == 0) {
-            printf("ratioPatterns = %lf // ratioDatabase = %lf\n",
-                   ratioPatterns, ratioDatabase);
+            printf(
+                "jobDimensionPatternsOverRanks = %lf, ratioPatterns = %lf // "
+                "jobDimensionDatabaseOverRanks = %lf, ratioDatabase = %lf\n",
+                (float)active_ranks / (float)n_patterns,
+                (float)omp_threads / (float)n_patterns, ratioPatterns,
+                ratioDatabase);
         }
 #endif
 
-#if USE_GPU
-        // TODO: Use MPI + OpenMP + GPU equations
-        res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
-                                         deviceCount >= 1);
-
-#else
-        // Use MPI + OpenMP equations
+        // Use Cost Model equations
         if (fabs(ratioPatterns - ratioDatabase) <= 1E-6) {
             // Both of the approaches use the hardware at its
             // maximum capacity, we default to DB-over-ranks approach
@@ -134,12 +132,12 @@ int main(int argc, char **argv) {
         // Call the decided strategy
         if (use_patterns_over_ranks) {
             argc -= 1;
-            res = patterns_over_ranks_hybrid(argc, argv, rank, world_size, 0);
+            res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
+                                             USE_GPU && (deviceCount >= 1));
         } else {
             argc -= 1;
             res = database_over_ranks(argc, argv, rank, world_size);
         }
-#endif
     }
 
     if (res != 0) {

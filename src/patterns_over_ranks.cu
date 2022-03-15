@@ -15,7 +15,6 @@
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
 
-/* Function computing the final string to print */
 __global__ void ComputeMatches(char *buf, char *pattern, int *local_matches,
                                int n_bytes, int pattern_length,
                                int approx_factor) {
