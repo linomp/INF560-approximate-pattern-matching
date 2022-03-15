@@ -90,12 +90,12 @@ int main(int argc, char **argv) {
         // Use MPI + OpenMP + GPU equations
 #else
         // Use MPI + OpenMP equations
-
-        if (ratioPatterns == 0 && ratioDatabase == 0) {
-            // It's the same. Both of the approaces use the hardware at its
-            // maximum capacity.
-            // TODO: random(DatabaseOverRanks, PatternsOverRanks);
-            use_patterns_over_ranks = 1;
+        if (fabs(ratioPatterns - ratioDatabase) <= 1E-6) {
+            // Both of the approaches use the hardware at its
+            // maximum capacity, we default to DB-over-ranks approach
+            // (random choice creates unnecessary synchronization challenge -
+            // all ranks should get the same seed)
+            use_patterns_over_ranks = 0;
         } else {
             // We choose the approach that optimizes better the use of
             // hardware.
