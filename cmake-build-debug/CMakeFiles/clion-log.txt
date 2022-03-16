@@ -1,0 +1,5 @@
+"/Users/paolo/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/213.6461.75/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=/Users/paolo/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/213.6461.75/CLion.app/Contents/bin/ninja/mac/ninja" -G Ninja "/Users/paolo/Library/Mobile Documents/com~apple~CloudDocs/Documenti/Università/Magistrale/Esami da sostenere/Algoritmi paralleli e distribuiti/INF560_APM_Final_Project"
+-- Run: /Users/paolo/opt/usr/local/bin/mpiexec -n 4  EXECUTABLE  ARGS
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /Users/paolo/Library/Mobile Documents/com~apple~CloudDocs/Documenti/Università/Magistrale/Esami da sostenere/Algoritmi paralleli e distribuiti/INF560_APM_Final_Project/cmake-build-debug

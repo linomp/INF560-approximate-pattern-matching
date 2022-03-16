@@ -14,8 +14,12 @@
 #define DEBUGBYTEOPENMP 0
 #define DEBUGOPENMPPOINTERS 0
 
+int searchPatternsInPieceDatabase(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
+                                  int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank,
+                                  int numberProcesses, int indexStartMyPiece, int approx_factor);
+
 int database_over_ranks(int argc, char **argv, int myRank,
-                        int numberProcesses) {
+                        int numberProcesses, int cuda_device_exists) {
     char **pattern;
     char *filename;
     int approx_factor = 0;
@@ -38,9 +42,9 @@ int database_over_ranks(int argc, char **argv, int myRank,
     // Check number of arguments
     if (argc < 4) {
         printf(
-            "Usage: %s approximation_factor "
-            "dna_database pattern1 pattern2 ...\n",
-            argv[0]);
+                "Usage: %s approximation_factor "
+                "dna_database pattern1 pattern2 ...\n",
+                argv[0]);
         return 1;
     }
 
@@ -54,7 +58,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
     nb_patterns = argc - 3;
 
     // Fill the pattern array
-    pattern = (char **)malloc(nb_patterns * sizeof(char *));
+    pattern = (char **) malloc(nb_patterns * sizeof(char *));
     if (pattern == NULL) {
         fprintf(stderr, "Unable to allocate array of pattern of size %d\n",
                 nb_patterns);
@@ -72,7 +76,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
             return 1;
         }
 
-        pattern[i] = (char *)malloc((l + 1) * sizeof(char));
+        pattern[i] = (char *) malloc((l + 1) * sizeof(char));
         if (pattern[i] == NULL) {
             fprintf(stderr, "Unable to allocate string of size %d\n", l);
             return 1;
@@ -88,9 +92,9 @@ int database_over_ranks(int argc, char **argv, int myRank,
     // I am rank 0
     if (myRank == 0) {
         printf(
-            "Approximate Pattern Mathing: "
-            "looking for %d pattern(s) in file %s w/ distance of %d\n",
-            nb_patterns, filename, approx_factor);
+                "Approximate Pattern Mathing: "
+                "looking for %d pattern(s) in file %s w/ distance of %d\n",
+                nb_patterns, filename, approx_factor);
 
         // Read the database
         buf = read_input_file(filename, &n_bytes);
@@ -99,7 +103,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
         }
 
         // Allocate the array of matches
-        n_matches = (int *)malloc(nb_patterns * sizeof(int));
+        n_matches = (int *) malloc(nb_patterns * sizeof(int));
         if (n_matches == NULL) {
             fprintf(stderr, "Error: unable to allocate memory for %ldB\n",
                     nb_patterns * sizeof(int));
@@ -111,9 +115,9 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
         int size_database = n_bytes;
         int numberPiecesDatabase =
-            numberProcesses -
-            1;  // Number of pieces we should divide the database into. The
-                // number of processes less the rank 0.
+                numberProcesses -
+                1;  // Number of pieces we should divide the database into. The
+        // number of processes less the rank 0.
         int size_piece;
 
         if (numberProcesses > 1) {
@@ -144,11 +148,11 @@ int database_over_ranks(int argc, char **argv, int myRank,
             } else {
                 indexStartMyPiece = (j - 1) * size_piece;
                 indexFinishMyPieceWithoutExtra =
-                    indexStartMyPiece +
-                    size_piece;  // I don't add here the extra (size_pattern -
-                                 // 1) but I'll do receiver-side depending on
-                                 // the pattern (and just for the ranks which
-                                 // are not the last one).
+                        indexStartMyPiece +
+                        size_piece;  // I don't add here the extra (size_pattern -
+                // 1) but I'll do receiver-side depending on
+                // the pattern (and just for the ranks which
+                // are not the last one).
             }
 
             int info[2];
@@ -195,9 +199,9 @@ int database_over_ranks(int argc, char **argv, int myRank,
         gettimeofday(&t2, NULL);
         duration = (t2.tv_sec - t1.tv_sec) + ((t2.tv_usec - t1.tv_usec) / 1e6);
         printf(
-            "\n(Rank %d) - TOTAL TIME using %d mpi_ranks and %d omp_thread(s) "
-            "per rank: %f s\n\n",
-            myRank, numberProcesses, atoi(getenv("OMP_NUM_THREADS")), duration);
+                "\n(Rank %d) - TOTAL TIME using %d mpi_ranks and %d omp_thread(s) "
+                "per rank: %f s\n\n",
+                myRank, numberProcesses, atoi(getenv("OMP_NUM_THREADS")), duration);
 
         // Print the results
         for (i = 0; i < nb_patterns; i++) {
@@ -206,7 +210,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
         }
     }
 
-    // If I am not the rank 0
+        // If I am not the rank 0
     else {
         // Read the database
         buf = read_input_file(filename, &n_bytes);
@@ -215,7 +219,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
         }
 
         int info[2];  // 1° element: indexStartMyPiece. 2° element:
-                      // indexFinishMyPieceWithoutExtra.
+        // indexFinishMyPieceWithoutExtra.
         MPI_Status status;
         MPI_Recv(&info, 2, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
                  &status);
@@ -225,7 +229,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
         int indexStartMyPiece = info[0];
         int indexFinishMyPieceWithoutExtra =
-            info[1];  // Without extra to recognize words between pieces.
+                info[1];  // Without extra to recognize words between pieces.
 
         // Initialize array where the threads of openMP will store the results.
         int numbersOfMatch[nb_patterns];
@@ -238,128 +242,284 @@ int database_over_ranks(int argc, char **argv, int myRank,
 #pragma omp parallel default(none) private(i)                                \
     firstprivate(indexFinishMyPieceWithoutExtra, indexStartMyPiece, n_bytes, \
                  approx_factor, nb_patterns, numberProcesses, myRank)        \
-        shared(buf, pattern, stderr, ompi_mpi_comm_world, ompi_mpi_int,      \
+        shared(buf, pattern, stderr, ompi_mpi_comm_world, ompi_mpi_int, \
                numbersOfMatch)
         {
+
+            int indexActualThread = omp_get_thread_num();
+            int numberThreads = omp_get_num_threads();
+
+            if (numberThreads > 1 && nb_patterns > 1) { // Otherwise there is no sense
+
+                int lastPatternAnalyzedByGPU = nb_patterns /
+                                               2; // If we have 7 pattern, we tell the GPU to take patterns from 1 to 3, and the threads between 4 and 7 will be spread over the threads.
+                int firstPatternAnalyzedByThreads = nb_patterns / 2 + 1;
+
+                if (indexActualThread == 0) { // Thread which takes care of GPU
+                    int sizePatterns[nb_patterns];
+                    for (i = 0; i < nb_patterns; i++) {
+                        sizePatterns[i] = strlen(pattern[i]);
+                    }
+
+                    int *numberOfMatchesGPU = searchPatternsInPieceDatabase(buf, n_bytes, pattern, nb_patterns,
+                                                                            lastPatternAnalyzedByGPU, sizePatterns,
+                    int indexFinishMyPieceWithoutExtra,
+                    int myRank,
+                    int numberProcesses,
+                    int indexStartMyPiece,
+                    int approx_factor);
+
+                    for(i = 0; i < lastPatternAnalyzedByGPU; i++){
+                        numbersOfMatch[i] = numberOfMatchesGPU[i];
+                    }
+
+                } else {
+
 #pragma omp for schedule(static)
 
-            for (i = 0; i < nb_patterns; i++) {
-                double timestampStart;
-                double timestampFinish;
+                    // I analyze the second half of the patterns
+                    for (i = firstPatternAnalyzedByThreads; i < nb_patterns; i++) {
+                        double timestampStart;
+                        double timestampFinish;
 
 #if DEBUG
-                printf(
-                    "----- MPI %d (out of %d) & OpenMP %d (out of %d). Started "
-                    "to analize pattern n° %d.\n",
-                    myRank, numberProcesses, omp_get_thread_num(),
-                    omp_get_num_threads(), i);
+                        printf(
+                        "----- MPI %d (out of %d) & OpenMP %d (out of %d). Started "
+                        "to analize pattern n° %d.\n",
+                        myRank, numberProcesses, omp_get_thread_num(),
+                        omp_get_num_threads(), i);
 #endif
 
-                int size_pattern = strlen(pattern[i]);
-                int *column;
+                        int size_pattern = strlen(pattern[i]);
+                        int *column;
 
-                column = (int *)malloc((size_pattern + 1) * sizeof(int));
-                if (column == NULL) {
-                    fprintf(
-                        stderr,
-                        "Error: unable to allocate memory for column (%ldB)\n",
-                        (size_pattern + 1) * sizeof(int));
-                    // return 1;
-                }
+                        column = (int *) malloc((size_pattern + 1) * sizeof(int));
+                        if (column == NULL) {
+                            fprintf(
+                                    stderr,
+                                    "Error: unable to allocate memory for column (%ldB)\n",
+                                    (size_pattern + 1) * sizeof(int));
+                            // return 1;
+                        }
 
-                // If I am not the last rank I should take in consideration
-                // extra characters from the next piece: in this way I don't
-                // miss words which are placed between two pieces. If am the
-                // last rank I don't take extra characters as the other ranks
-                // since the file is finished.
-                int indexFinishMyPieceWithExtra =
-                    indexFinishMyPieceWithoutExtra;
-                if (myRank != numberProcesses - 1) {
-                    indexFinishMyPieceWithExtra += size_pattern - 1;
-                }
+                        // If I am not the last rank I should take in consideration
+                        // extra characters from the next piece: in this way I don't
+                        // miss words which are placed between two pieces. If am the
+                        // last rank I don't take extra characters as the other ranks
+                        // since the file is finished.
+                        int indexFinishMyPieceWithExtra =
+                                indexFinishMyPieceWithoutExtra;
+                        if (myRank != numberProcesses - 1) {
+                            indexFinishMyPieceWithExtra += size_pattern - 1;
+                        }
 
 #if DEBUG
-                printf(
-                    "Rank %d. I received the info from rank 0. Start index: "
-                    "%d. Finish index: %d\n",
-                    myRank, indexStartMyPiece, indexFinishMyPieceWithoutExtra);
-                printf("Rank %d. Final index updated: %d.\n", myRank,
-                       indexFinishMyPieceWithExtra);
+                        printf(
+                        "Rank %d. I received the info from rank 0. Start index: "
+                        "%d. Finish index: %d\n",
+                        myRank, indexStartMyPiece, indexFinishMyPieceWithoutExtra);
+                    printf("Rank %d. Final index updated: %d.\n", myRank,
+                           indexFinishMyPieceWithExtra);
 #endif
 
 #if DEBUGPIECEREAD
-                printf("Rank %d: I will read the following text:\n", myRank);
-                int j;
-                for (j = indexStartMyPiece;
-                     j < indexFinishMyPieceWithExtra - approx_factor; j++) {
-                    printf("%c", buf[j]);
-                }
-                printf("\n");
+                        printf("Rank %d: I will read the following text:\n", myRank);
+                    int j;
+                    for (j = indexStartMyPiece;
+                         j < indexFinishMyPieceWithExtra - approx_factor; j++) {
+                        printf("%c", buf[j]);
+                    }
+                    printf("\n");
 #endif
 
-                // Traverse the input data up to the end of the file
-                n_bytes = indexFinishMyPieceWithExtra;
+                        // Traverse the input data up to the end of the file
+                        n_bytes = indexFinishMyPieceWithExtra;
 
 #if DEBUG
-                printf(
-                    "----- MPI %d (out of %d) & OpenMP %d (out of %d). Index "
-                    "Start: %d. Index finish: %d.\n",
-                    myRank, numberProcesses, omp_get_thread_num(),
-                    omp_get_num_threads(), indexStartMyPiece, n_bytes);
+                        printf(
+                        "----- MPI %d (out of %d) & OpenMP %d (out of %d). Index "
+                        "Start: %d. Index finish: %d.\n",
+                        myRank, numberProcesses, omp_get_thread_num(),
+                        omp_get_num_threads(), indexStartMyPiece, n_bytes);
 #endif
 
-                timestampStart = omp_get_wtime();
+                        timestampStart = omp_get_wtime();
 
-                // It's not possible to parallelize with OpenMP this for since
-                // the cycles are interconnected.
-                int r;
-                for (r = indexStartMyPiece; r < n_bytes - approx_factor; r++) {
+                        // It's not possible to parallelize with OpenMP this for since
+                        // the cycles are interconnected.
+                        int r;
+                        for (r = indexStartMyPiece; r < n_bytes - approx_factor; r++) {
 #if DEBUGBYTEOPENMP
-                    printf(
-                        "MPI %d (out of %d) & OpenMP %d (out of %d). I am "
-                        "analyzing byte %d for pattern %d\n",
-                        myRank, numberProcesses, omp_get_thread_num(),
-                        omp_get_num_threads(), r, i);
+                            printf(
+                            "MPI %d (out of %d) & OpenMP %d (out of %d). I am "
+                            "analyzing byte %d for pattern %d\n",
+                            myRank, numberProcesses, omp_get_thread_num(),
+                            omp_get_num_threads(), r, i);
 
 #endif
 
 #if DEBUGCHARACTERS
-                    printf("Rank %d. I read the character: %c \n", myRank,
-                           buf[j]);
+                            printf("Rank %d. I read the character: %c \n", myRank,
+                               buf[j]);
 #endif
 
-                    int distance = 0;
-                    int size;
-                    size = size_pattern;
-                    if (n_bytes - r < size_pattern) {
-                        size = n_bytes - r;
-                    }
+                            int distance = 0;
+                            int size;
+                            size = size_pattern;
+                            if (n_bytes - r < size_pattern) {
+                                size = n_bytes - r;
+                            }
 
 #if DEBUGOPENMPPOINTERS
-                    printf(
-                        "Pattern: %p. Buf: %p. Size: %p. Columns: %p.\ni "
-                        "address: %p. i value: %d. j address: %p. j value: %d "
-                        "\n",
-                        &pattern, &buf[j], &size, &column, &i, i, &j, j);
+                            printf(
+                            "Pattern: %p. Buf: %p. Size: %p. Columns: %p.\ni "
+                            "address: %p. i value: %d. j address: %p. j value: %d "
+                            "\n",
+                            &pattern, &buf[j], &size, &column, &i, i, &j, j);
 #endif
-                    distance = levenshtein(pattern[i], &buf[r], size, column);
+                            distance = levenshtein(pattern[i], &buf[r], size, column);
 
-                    if (distance <= approx_factor) {
-                        numbersOfMatch[i] += 1;
+                            if (distance <= approx_factor) {
+                                numbersOfMatch[i] += 1;
 
 #if DEBUG
-                        printf("Rank %d. MATCH FOUND! \n", myRank);
+                                printf("Rank %d. MATCH FOUND! \n", myRank);
 #endif
+                            }
+                        }
+                        timestampFinish = omp_get_wtime();
+
+#if DEBUG
+                        double elapsedTime = timestampFinish - timestampStart;
+                    printf("Time elapsed for a thread: %g.\n", elapsedTime);
+#endif
+                        free(column);
                     }
                 }
-                timestampFinish = omp_get_wtime();
+
+            } else { // If I have only one thread I use CPU and not GPU. It should be faster.
+
+#pragma omp for schedule(static)
+
+                for (i = 0; i < nb_patterns; i++) {
+                    double timestampStart;
+                    double timestampFinish;
 
 #if DEBUG
-                double elapsedTime = timestampFinish - timestampStart;
-                printf("Time elapsed for a thread: %g.\n", elapsedTime);
+                    printf(
+                        "----- MPI %d (out of %d) & OpenMP %d (out of %d). Started "
+                        "to analize pattern n° %d.\n",
+                        myRank, numberProcesses, omp_get_thread_num(),
+                        omp_get_num_threads(), i);
 #endif
-                free(column);
+
+                    int size_pattern = strlen(pattern[i]);
+                    int *column;
+
+                    column = (int *) malloc((size_pattern + 1) * sizeof(int));
+                    if (column == NULL) {
+                        fprintf(
+                                stderr,
+                                "Error: unable to allocate memory for column (%ldB)\n",
+                                (size_pattern + 1) * sizeof(int));
+                        // return 1;
+                    }
+
+                    // If I am not the last rank I should take in consideration
+                    // extra characters from the next piece: in this way I don't
+                    // miss words which are placed between two pieces. If am the
+                    // last rank I don't take extra characters as the other ranks
+                    // since the file is finished.
+                    int indexFinishMyPieceWithExtra =
+                            indexFinishMyPieceWithoutExtra;
+                    if (myRank != numberProcesses - 1) {
+                        indexFinishMyPieceWithExtra += size_pattern - 1;
+                    }
+
+#if DEBUG
+                    printf(
+                        "Rank %d. I received the info from rank 0. Start index: "
+                        "%d. Finish index: %d\n",
+                        myRank, indexStartMyPiece, indexFinishMyPieceWithoutExtra);
+                    printf("Rank %d. Final index updated: %d.\n", myRank,
+                           indexFinishMyPieceWithExtra);
+#endif
+
+#if DEBUGPIECEREAD
+                    printf("Rank %d: I will read the following text:\n", myRank);
+                    int j;
+                    for (j = indexStartMyPiece;
+                         j < indexFinishMyPieceWithExtra - approx_factor; j++) {
+                        printf("%c", buf[j]);
+                    }
+                    printf("\n");
+#endif
+
+                    // Traverse the input data up to the end of the file
+                    n_bytes = indexFinishMyPieceWithExtra;
+
+#if DEBUG
+                    printf(
+                        "----- MPI %d (out of %d) & OpenMP %d (out of %d). Index "
+                        "Start: %d. Index finish: %d.\n",
+                        myRank, numberProcesses, omp_get_thread_num(),
+                        omp_get_num_threads(), indexStartMyPiece, n_bytes);
+#endif
+
+                    timestampStart = omp_get_wtime();
+
+                    // It's not possible to parallelize with OpenMP this for since
+                    // the cycles are interconnected.
+                    int r;
+                    for (r = indexStartMyPiece; r < n_bytes - approx_factor; r++) {
+#if DEBUGBYTEOPENMP
+                        printf(
+                            "MPI %d (out of %d) & OpenMP %d (out of %d). I am "
+                            "analyzing byte %d for pattern %d\n",
+                            myRank, numberProcesses, omp_get_thread_num(),
+                            omp_get_num_threads(), r, i);
+
+#endif
+
+#if DEBUGCHARACTERS
+                        printf("Rank %d. I read the character: %c \n", myRank,
+                               buf[j]);
+#endif
+
+                        int distance = 0;
+                        int size;
+                        size = size_pattern;
+                        if (n_bytes - r < size_pattern) {
+                            size = n_bytes - r;
+                        }
+
+#if DEBUGOPENMPPOINTERS
+                        printf(
+                            "Pattern: %p. Buf: %p. Size: %p. Columns: %p.\ni "
+                            "address: %p. i value: %d. j address: %p. j value: %d "
+                            "\n",
+                            &pattern, &buf[j], &size, &column, &i, i, &j, j);
+#endif
+                        distance = levenshtein(pattern[i], &buf[r], size, column);
+
+                        if (distance <= approx_factor) {
+                            numbersOfMatch[i] += 1;
+
+#if DEBUG
+                            printf("Rank %d. MATCH FOUND! \n", myRank);
+#endif
+                        }
+                    }
+                    timestampFinish = omp_get_wtime();
+
+#if DEBUG
+                    double elapsedTime = timestampFinish - timestampStart;
+                    printf("Time elapsed for a thread: %g.\n", elapsedTime);
+#endif
+                    free(column);
+                }
             }
+
         }
 
         // I send the result of the matches of every pattern to rank 0
