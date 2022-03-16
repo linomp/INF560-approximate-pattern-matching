@@ -246,7 +246,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
         }
 
         // If we have only one pattern the CPU will take care of the only pattern
-        int * addressNumbersOfMatchGPU;
+        int *addressNumbersOfMatchGPU;
         int lastPatternAnalyzedByGPU;
         int firstPatternAnalyzedByThreads;
         if (gpuActuallyUsed) {
@@ -260,17 +260,14 @@ int database_over_ranks(int argc, char **argv, int myRank,
                 sizePatterns[i] = strlen(pattern[i]);
             }
 
-            printf("BOH\n");
-
             // Setup the GPU and execute kernel code
-            addressNumbersOfMatchGPU = initializeGPU(buf, n_bytes, pattern, nb_patterns,
-                                                                    lastPatternAnalyzedByGPU, sizePatterns,
-                                                                    indexFinishMyPieceWithoutExtra,
-                                                                    myRank,
-                                                                    numberProcesses,
-                                                                    indexStartMyPiece,
-                                                                    approx_factor);
-            printf("Ricevuto: %p", &addressNumbersOfMatchGPU);
+            initializeGPU(buf, n_bytes, pattern, nb_patterns,
+                          lastPatternAnalyzedByGPU, sizePatterns,
+                          indexFinishMyPieceWithoutExtra,
+                          myRank,
+                          numberProcesses,
+                          indexStartMyPiece,
+                          approx_factor);
 #if DEBUGGPU
             // Print the info just one time.
             printf("Using the GPU.\n");
@@ -419,14 +416,6 @@ int database_over_ranks(int argc, char **argv, int myRank,
                     free(column);
                 }
 
-// TODO Aggiungere Pragma single
-
-                // Read GPU Result and merging with the original array of results (numbersOfMatch)
-                int * numberOfMatchesGPU = getGPUResult (addressNumbersOfMatchGPU, nb_patterns);
-                for (i = 0; i < lastPatternAnalyzedByGPU; i++) {
-                    numbersOfMatch[i] = numberOfMatchesGPU[i];
-                }
-
             } else { // I have only the CPU.
 
 #if DEBUGGPU
@@ -555,7 +544,17 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
         }
 
+        if (gpuActuallyUsed) {
 
+            // Read GPU Result and merging with the original array of results (numbersOfMatch)
+            int *numberOfMatchesGPU = getGPUResult(nb_patterns);
+#if DEBUGGPU
+            printf("Got the results from GPU.\n");
+#endif
+            for (i = 0; i < lastPatternAnalyzedByGPU; i++) {
+                numbersOfMatch[i] = numberOfMatchesGPU[i];
+            }
+        }
 
         // I send the result of the matches of every pattern to rank 0
         for (i = 0; i < nb_patterns; i++) {
