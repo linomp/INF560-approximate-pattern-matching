@@ -146,7 +146,7 @@ searchPatternsInPieceDatabase(char *buf, int n_bytes, char **pattern, int nb_pat
 #endif
 
     // Allocate local structure where to save the number of matches
-    int numbersOfMatch[nb_patterns];
+    int * numbersOfMatch = (int *) malloc(nb_patterns * sizeof(int));
 
     // Allocate space for the buffer and copy data
     char *d_buf;

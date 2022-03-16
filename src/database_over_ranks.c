@@ -254,12 +254,21 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
                 int lastPatternAnalyzedByGPU = nb_patterns /
                                                2; // If we have 7 pattern, we tell the GPU to take patterns from 1 to 3, and the threads between 4 and 7 will be spread over the threads.
-                int firstPatternAnalyzedByThreads = nb_patterns / 2 + 1;
+                int firstPatternAnalyzedByThreads = (nb_patterns / 2);
+
+                /*if (nb_patterns % 2 == 0) {
+                    firstPatternAnalyzedByThreads = nb_patterns / 2;
+                } else {
+
+                }*/
 
 #if DEBUGGPU
-                printf("Using the GPU.");
-                printf("GPU will look for patterns from 1 to %d.\n", lastPatternAnalyzedByGPU);
-                printf("Other Threads will look for patterns from %d to %d.\n", firstPatternAnalyzedByThreads, nb_patterns);
+                if(indexActualThread == 0) { // Print the info just one time.
+                    printf("Using the GPU.\n");
+                    printf("GPU will look for patterns from 1 to %d.\n", lastPatternAnalyzedByGPU);
+                    printf("Other Threads will look for patterns from %d to %d.\n", firstPatternAnalyzedByThreads + 1,
+                           nb_patterns);
+                }
 #endif
 
                 if (indexActualThread == 0) { // Thread 0 always takes care of GPU
