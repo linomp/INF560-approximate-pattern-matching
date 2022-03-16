@@ -10,7 +10,7 @@
 #include <cstdio>
 
 #define DEBUG_CUDA 0
-#define TESTPERFORMANCE_NO_LEVENSHTEIN 1
+#define TESTPERFORMANCE_NO_LEVENSHTEIN 0
 
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
@@ -31,6 +31,26 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
 
         if (TESTPERFORMANCE_NO_LEVENSHTEIN) {
             // Sleep 1 microsecond
+
+            // This works just with Compute Capability > 7.0
+            // unsigned int ns = 1000;
+            // __nanosleep(ns);
+
+            /*
+
+            Without the possibility to use nanosleep the only thing that it's possible to do is to wait an arbitrary number of clocks. But we don't know how many clocks correspond to a sleep of 1 microsecond.
+            I could try through measurements to understand how many clocks correspond to 1 microsecond, but this is not so reliable. Different GPU can have different velocity (maybe one is running higher clock speed).
+
+            clock_t start_clock = clock();
+            clock_t clock_offset = 0;
+            while (clock_offset < clock_count)
+            {
+                clock_offset = clock() - start_clock;
+            }
+            d_o[0] = clock_offset;
+
+            */
+
         } else {
 
 #if DEBUG_CUDA
