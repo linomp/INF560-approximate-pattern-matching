@@ -15,9 +15,9 @@
 #define DEBUGOPENMPPOINTERS 0
 #define DEBUGGPU 1
 
-int searchPatternsInPieceDatabase(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
-                                  int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank,
-                                  int numberProcesses, int indexStartMyPiece, int approx_factor);
+int initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
+                  int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank,
+                  int numberProcesses, int indexStartMyPiece, int approx_factor);
 
 int database_over_ranks(int argc, char **argv, int myRank,
                         int numberProcesses, int cuda_device_exists) {
@@ -238,182 +238,193 @@ int database_over_ranks(int argc, char **argv, int myRank,
             numbersOfMatch[i] = 0;
         }
 
+        int gpuActuallyUsed;
+        if (cuda_device_exists && nb_patterns > 1) {
+            gpuActuallyUsed = 1;
+        } else {
+            gpuActuallyUsed = 0;
+        }
+
+        // If we have only one pattern the CPU will take care of the only pattern
+        int * addressNumbersOfMatchGPU;
+        int lastPatternAnalyzedByGPU;
+        int firstPatternAnalyzedByThreads;
+        if (gpuActuallyUsed) {
+            // Split the patterns through CPU threads and GPU
+            lastPatternAnalyzedByGPU = nb_patterns / 2;
+            // If we have 7 pattern, we tell the GPU to take patterns from 1 to 3, and the threads between 4 and 7 will be spread over the threads.
+            firstPatternAnalyzedByThreads = (nb_patterns / 2);
+
+            int sizePatterns[nb_patterns];
+            for (i = 0; i < nb_patterns; i++) {
+                sizePatterns[i] = strlen(pattern[i]);
+            }
+
+            // Setup the GPU and execute kernel code
+            addressNumbersOfMatchGPU = initializeGPU(buf, n_bytes, pattern, nb_patterns,
+                                                                    lastPatternAnalyzedByGPU, sizePatterns,
+                                                                    indexFinishMyPieceWithoutExtra,
+                                                                    myRank,
+                                                                    numberProcesses,
+                                                                    indexStartMyPiece,
+                                                                    approx_factor);
+#if DEBUGGPU
+            // Print the info just one time.
+            printf("Using the GPU.\n");
+            printf("GPU will look for patterns from 1 to %d.\n", lastPatternAnalyzedByGPU);
+            printf("Other Threads will look for patterns from %d to %d.\n", firstPatternAnalyzedByThreads + 1,
+                   nb_patterns);
+
+#endif
+
+        }
+
         // The implementation is correct. However, I don't notice the
         // improvements of performance that I was expecting.
 #pragma omp parallel default(none) private(i)                                \
     firstprivate(indexFinishMyPieceWithoutExtra, indexStartMyPiece, n_bytes, \
-                 approx_factor, nb_patterns, numberProcesses, myRank)        \
+                 approx_factor, nb_patterns, numberProcesses, myRank, addressNumbersOfMatchGPU, lastPatternAnalyzedByGPU, firstPatternAnalyzedByThreads)        \
         shared(buf, pattern, stderr, ompi_mpi_comm_world, ompi_mpi_int, \
-               numbersOfMatch, cuda_device_exists)
+               numbersOfMatch, cuda_device_exists, gpuActuallyUsed)
         {
 
-            int indexActualThread = omp_get_thread_num();
-            int numberThreads = omp_get_num_threads();
-
-            if (cuda_device_exists && numberThreads > 1 && nb_patterns > 1) { // Otherwise there is no sense
-
-                int lastPatternAnalyzedByGPU = nb_patterns /
-                                               2; // If we have 7 pattern, we tell the GPU to take patterns from 1 to 3, and the threads between 4 and 7 will be spread over the threads.
-                int firstPatternAnalyzedByThreads = (nb_patterns / 2);
-
-                /*if (nb_patterns % 2 == 0) {
-                    firstPatternAnalyzedByThreads = nb_patterns / 2;
-                } else {
-
-                }*/
+            // I have the GPU and I use it
+            if (gpuActuallyUsed) {
 
 #if DEBUGGPU
-                if(indexActualThread == 0) { // Print the info just one time.
-                    printf("Using the GPU.\n");
-                    printf("GPU will look for patterns from 1 to %d.\n", lastPatternAnalyzedByGPU);
-                    printf("Other Threads will look for patterns from %d to %d.\n", firstPatternAnalyzedByThreads + 1,
-                           nb_patterns);
-                }
+                printf("Using GPU.");
 #endif
-
-                if (indexActualThread == 0) { // Thread 0 always takes care of GPU
-                    int sizePatterns[nb_patterns];
-                    for (i = 0; i < nb_patterns; i++) {
-                        sizePatterns[i] = strlen(pattern[i]);
-                    }
-
-                    int *numberOfMatchesGPU = searchPatternsInPieceDatabase(buf, n_bytes, pattern, nb_patterns,
-                                                                            lastPatternAnalyzedByGPU, sizePatterns,
-                                                                            indexFinishMyPieceWithoutExtra,
-                                                                            myRank,
-                                                                            numberProcesses,
-                                                                            indexStartMyPiece,
-                                                                            approx_factor);
-
-                    for (i = 0; i < lastPatternAnalyzedByGPU; i++) {
-                        numbersOfMatch[i] = numberOfMatchesGPU[i];
-                    }
-
-                } else {
 
 #pragma omp for schedule(static)
 
-                    // I analyze the second half of the patterns
-                    for (i = firstPatternAnalyzedByThreads; i < nb_patterns; i++) {
-                        double timestampStart;
-                        double timestampFinish;
+                // I analyze the second half of the patterns
+                for (i = firstPatternAnalyzedByThreads; i < nb_patterns; i++) {
+                    double timestampStart;
+                    double timestampFinish;
 
 #if DEBUG
-                        printf(
-                        "----- MPI %d (out of %d) & OpenMP %d (out of %d). Started "
-                        "to analize pattern n° %d.\n",
-                        myRank, numberProcesses, omp_get_thread_num(),
-                        omp_get_num_threads(), i);
+                    printf(
+                    "----- MPI %d (out of %d) & OpenMP %d (out of %d). Started "
+                    "to analize pattern n° %d.\n",
+                    myRank, numberProcesses, omp_get_thread_num(),
+                    omp_get_num_threads(), i);
 #endif
 
-                        int size_pattern = strlen(pattern[i]);
-                        int *column;
+                    int size_pattern = strlen(pattern[i]);
+                    int *column;
 
-                        column = (int *) malloc((size_pattern + 1) * sizeof(int));
-                        if (column == NULL) {
-                            fprintf(
-                                    stderr,
-                                    "Error: unable to allocate memory for column (%ldB)\n",
-                                    (size_pattern + 1) * sizeof(int));
-                            // return 1;
-                        }
+                    column = (int *) malloc((size_pattern + 1) * sizeof(int));
+                    if (column == NULL) {
+                        fprintf(
+                                stderr,
+                                "Error: unable to allocate memory for column (%ldB)\n",
+                                (size_pattern + 1) * sizeof(int));
+                        // return 1;
+                    }
 
-                        // If I am not the last rank I should take in consideration
-                        // extra characters from the next piece: in this way I don't
-                        // miss words which are placed between two pieces. If am the
-                        // last rank I don't take extra characters as the other ranks
-                        // since the file is finished.
-                        int indexFinishMyPieceWithExtra =
-                                indexFinishMyPieceWithoutExtra;
-                        if (myRank != numberProcesses - 1) {
-                            indexFinishMyPieceWithExtra += size_pattern - 1;
-                        }
+                    // If I am not the last rank I should take in consideration
+                    // extra characters from the next piece: in this way I don't
+                    // miss words which are placed between two pieces. If am the
+                    // last rank I don't take extra characters as the other ranks
+                    // since the file is finished.
+                    int indexFinishMyPieceWithExtra =
+                            indexFinishMyPieceWithoutExtra;
+                    if (myRank != numberProcesses - 1) {
+                        indexFinishMyPieceWithExtra += size_pattern - 1;
+                    }
 
 #if DEBUG
-                        printf(
-                        "Rank %d. I received the info from rank 0. Start index: "
-                        "%d. Finish index: %d\n",
-                        myRank, indexStartMyPiece, indexFinishMyPieceWithoutExtra);
-                    printf("Rank %d. Final index updated: %d.\n", myRank,
-                           indexFinishMyPieceWithExtra);
+                    printf(
+                    "Rank %d. I received the info from rank 0. Start index: "
+                    "%d. Finish index: %d\n",
+                    myRank, indexStartMyPiece, indexFinishMyPieceWithoutExtra);
+                printf("Rank %d. Final index updated: %d.\n", myRank,
+                       indexFinishMyPieceWithExtra);
 #endif
 
 #if DEBUGPIECEREAD
-                        printf("Rank %d: I will read the following text:\n", myRank);
-                    int j;
-                    for (j = indexStartMyPiece;
-                         j < indexFinishMyPieceWithExtra - approx_factor; j++) {
-                        printf("%c", buf[j]);
-                    }
-                    printf("\n");
+                    printf("Rank %d: I will read the following text:\n", myRank);
+                int j;
+                for (j = indexStartMyPiece;
+                     j < indexFinishMyPieceWithExtra - approx_factor; j++) {
+                    printf("%c", buf[j]);
+                }
+                printf("\n");
 #endif
 
-                        // Traverse the input data up to the end of the file
-                        n_bytes = indexFinishMyPieceWithExtra;
+                    // Traverse the input data up to the end of the file
+                    n_bytes = indexFinishMyPieceWithExtra;
 
 #if DEBUG
-                        printf(
-                        "----- MPI %d (out of %d) & OpenMP %d (out of %d). Index "
-                        "Start: %d. Index finish: %d.\n",
-                        myRank, numberProcesses, omp_get_thread_num(),
-                        omp_get_num_threads(), indexStartMyPiece, n_bytes);
+                    printf(
+                    "----- MPI %d (out of %d) & OpenMP %d (out of %d). Index "
+                    "Start: %d. Index finish: %d.\n",
+                    myRank, numberProcesses, omp_get_thread_num(),
+                    omp_get_num_threads(), indexStartMyPiece, n_bytes);
 #endif
 
-                        timestampStart = omp_get_wtime();
+                    timestampStart = omp_get_wtime();
 
-                        // It's not possible to parallelize with OpenMP this for since
-                        // the cycles are interconnected.
-                        int r;
-                        for (r = indexStartMyPiece; r < n_bytes - approx_factor; r++) {
+                    // It's not possible to parallelize with OpenMP this for since
+                    // the cycles are interconnected.
+                    int r;
+                    for (r = indexStartMyPiece; r < n_bytes - approx_factor; r++) {
 #if DEBUGBYTEOPENMP
-                            printf(
-                            "MPI %d (out of %d) & OpenMP %d (out of %d). I am "
-                            "analyzing byte %d for pattern %d\n",
-                            myRank, numberProcesses, omp_get_thread_num(),
-                            omp_get_num_threads(), r, i);
+                        printf(
+                        "MPI %d (out of %d) & OpenMP %d (out of %d). I am "
+                        "analyzing byte %d for pattern %d\n",
+                        myRank, numberProcesses, omp_get_thread_num(),
+                        omp_get_num_threads(), r, i);
 
 #endif
 
 #if DEBUGCHARACTERS
-                            printf("Rank %d. I read the character: %c \n", myRank,
-                               buf[j]);
+                        printf("Rank %d. I read the character: %c \n", myRank,
+                           buf[j]);
 #endif
 
-                            int distance = 0;
-                            int size;
-                            size = size_pattern;
-                            if (n_bytes - r < size_pattern) {
-                                size = n_bytes - r;
-                            }
+                        int distance = 0;
+                        int size;
+                        size = size_pattern;
+                        if (n_bytes - r < size_pattern) {
+                            size = n_bytes - r;
+                        }
 
 #if DEBUGOPENMPPOINTERS
-                            printf(
-                            "Pattern: %p. Buf: %p. Size: %p. Columns: %p.\ni "
-                            "address: %p. i value: %d. j address: %p. j value: %d "
-                            "\n",
-                            &pattern, &buf[j], &size, &column, &i, i, &j, j);
+                        printf(
+                        "Pattern: %p. Buf: %p. Size: %p. Columns: %p.\ni "
+                        "address: %p. i value: %d. j address: %p. j value: %d "
+                        "\n",
+                        &pattern, &buf[j], &size, &column, &i, i, &j, j);
 #endif
-                            distance = levenshtein(pattern[i], &buf[r], size, column);
+                        distance = levenshtein(pattern[i], &buf[r], size, column);
 
-                            if (distance <= approx_factor) {
-                                numbersOfMatch[i] += 1;
+                        if (distance <= approx_factor) {
+                            numbersOfMatch[i] += 1;
 
 #if DEBUG
-                                printf("Rank %d. MATCH FOUND! \n", myRank);
+                            printf("Rank %d. MATCH FOUND! \n", myRank);
 #endif
-                            }
                         }
-                        timestampFinish = omp_get_wtime();
+                    }
+                    timestampFinish = omp_get_wtime();
 
 #if DEBUG
-                        double elapsedTime = timestampFinish - timestampStart;
-                    printf("Time elapsed for a thread: %g.\n", elapsedTime);
+                    double elapsedTime = timestampFinish - timestampStart;
+                printf("Time elapsed for a thread: %g.\n", elapsedTime);
 #endif
-                        free(column);
-                    }
+                    free(column);
                 }
 
-            } else { // If I have only one thread I use CPU and not GPU. It should be faster.
+// TODO Aggiungere Pragma single
+
+                // Read GPU Result and merging with the original array of results (numbersOfMatch)
+                int * numberOfMatchesGPU = getGPUResult (addressNumbersOfMatchGPU, nb_patterns);
+                for (i = 0; i < lastPatternAnalyzedByGPU; i++) {
+                    numbersOfMatch[i] = numberOfMatchesGPU[i];
+                }
+
+            } else { // I have only the CPU.
 
 #if DEBUGGPU
                 printf("Not using GPU. This means that there is no GPU, or there is just one pattern or there is just one thread.");
@@ -540,6 +551,8 @@ int database_over_ranks(int argc, char **argv, int myRank,
             }
 
         }
+
+
 
         // I send the result of the matches of every pattern to rank 0
         for (i = 0; i < nb_patterns; i++) {

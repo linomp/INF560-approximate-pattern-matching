@@ -136,17 +136,13 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
 }
 
 
-extern "C" int *
-searchPatternsInPieceDatabase(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
-                              int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank, int numberProcesses,
-                              int indexStartMyPiece, int approx_factor) {
+extern "C" int * initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
+              int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank, int numberProcesses,
+              int indexStartMyPiece, int approx_factor) {
 
 #if DEBUG_CUDA
     printf("CUDA_DEBUG. Starting allocating data structures and memory transfers...\n");
 #endif
-
-    // Allocate local structure where to save the number of matches
-    int * numbersOfMatch = (int *) malloc(nb_patterns * sizeof(int));
 
     // Allocate space for the buffer and copy data
     char *d_buf;
@@ -185,21 +181,29 @@ searchPatternsInPieceDatabase(char *buf, int n_bytes, char **pattern, int nb_pat
     printf("CUDA_DEBUG. Going to call the kernel code\n");
 #endif
 
-    searchPattern<<<sizeGrid, sizeBlocks>>>(d_buf, n_bytes, pattern, nb_patterns, lastPatternAnalyzedByGPU,
-                                            sizePatterns, numbersOfMatch, indexFinishMyPieceWithoutExtra, myRank,
+    searchPattern<<<sizeGrid, sizeBlocks>>>(d_buf, n_bytes, &d_pattern, nb_patterns, lastPatternAnalyzedByGPU,
+                                            d_sizePatterns, d_numbersOfMatch, indexFinishMyPieceWithoutExtra, myRank,
                                             numberProcesses, indexStartMyPiece, approx_factor);
 
 #if DEBUG_CUDA
     printf("CUDA_DEBUG. Kernel code returned.\n");
 #endif
 
-    cudaMemcpy(numbersOfMatch, d_numbersOfMatch, nb_patterns * sizeof(int),
-               cudaMemcpyDeviceToHost);
-
 #if DEBUG_CUDA
     printf("CUDA_DEBUG. Copied results of CUDA.\n");
 #endif
 
-    return numbersOfMatch;
+    return d_numbersOfMatch;
 
+}
+
+extern "C" int *
+getGPUResult(int * d_numbersOfMatch, int nb_patterns) {
+    // Allocate local structure where to save the number of matches
+    int *numbersOfMatch = (int *) malloc(nb_patterns * sizeof(int));
+
+    cudaMemcpy(numbersOfMatch, d_numbersOfMatch, nb_patterns * sizeof(int),
+               cudaMemcpyDeviceToHost);
+
+    return numbersOfMatch;
 }
