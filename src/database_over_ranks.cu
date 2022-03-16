@@ -15,6 +15,7 @@
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
 
+
 __global__ void
 searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU, int *sizePatterns,
               int *numbersOfMatch, int indexFinishMyPieceWithoutExtra, int myRank, int numberProcesses,
@@ -136,7 +137,7 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
 }
 
 
-extern "C" int * initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
+extern "C" int ** initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
               int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank, int numberProcesses,
               int indexStartMyPiece, int approx_factor) {
 
@@ -155,7 +156,7 @@ extern "C" int * initializeGPU(char *buf, int n_bytes, char **pattern, int nb_pa
     cudaMemcpy(d_sizePatterns, sizePatterns, nb_patterns, cudaMemcpyHostToDevice);
 
     // Allocate array where to save the number of matches
-    int *d_numbersOfMatch;
+
     cudaMalloc(&d_numbersOfMatch, nb_patterns * sizeof(int));
 
     // Allocate array of patterns: that is an array of arrays
@@ -170,9 +171,9 @@ extern "C" int * initializeGPU(char *buf, int n_bytes, char **pattern, int nb_pa
     }
 
     // Initialize array
-    for (int i = 0; i < nb_patterns; i++) {
-        d_numbersOfMatch = 0;
-    }
+    //for (int i = 0; i < nb_patterns; i++) {
+        //d_numbersOfMatch[i] = 0;
+   // }
 
     int sizeGrid = 256;
     int sizeBlocks = 1;
@@ -193,7 +194,11 @@ extern "C" int * initializeGPU(char *buf, int n_bytes, char **pattern, int nb_pa
     printf("CUDA_DEBUG. Copied results of CUDA.\n");
 #endif
 
-    return d_numbersOfMatch;
+    //long * pointerNumbersOfMatch = (long*) malloc(2 * sizeof(long));
+    //pointerNumbersOfMatch[0]=(long)d_numbersOfMatch;
+    // printf("Prima di invio: %ld %ld", pointerNumbersOfMatch[0], pointerNumbersOfMatch[1]);
+    printf("Here %p", &d_numbersOfMatch);
+    return &d_numbersOfMatch;
 
 }
 

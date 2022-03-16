@@ -260,6 +260,8 @@ int database_over_ranks(int argc, char **argv, int myRank,
                 sizePatterns[i] = strlen(pattern[i]);
             }
 
+            printf("BOH\n");
+
             // Setup the GPU and execute kernel code
             addressNumbersOfMatchGPU = initializeGPU(buf, n_bytes, pattern, nb_patterns,
                                                                     lastPatternAnalyzedByGPU, sizePatterns,
@@ -268,6 +270,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
                                                                     numberProcesses,
                                                                     indexStartMyPiece,
                                                                     approx_factor);
+            printf("Ricevuto: %p", &addressNumbersOfMatchGPU);
 #if DEBUGGPU
             // Print the info just one time.
             printf("Using the GPU.\n");
