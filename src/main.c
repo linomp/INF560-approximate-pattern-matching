@@ -14,7 +14,7 @@
 #include "approaches.h"
 
 #define DEBUG_APPROACH_CHOSEN 0
-#define USE_GPU 0
+#define USE_GPU 1
 
 void getDeviceCount(int *deviceCountPtr);
 void setDevice(int rank, int deviceCount);

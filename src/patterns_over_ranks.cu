@@ -10,7 +10,6 @@
 #include <cstdio>
 
 #define DEBUG_CUDA 0
-#define TESTPERFORMANCE_NO_LEVENSHTEIN 1
 
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
@@ -60,21 +59,17 @@ __global__ void ComputeMatches(char *buf, char *pattern, int *local_matches,
 
         distance = column[size];
 
-#if TESTPERFORMANCE_NO_LEVENSHTEIN
-        continue;
-#else
         if (distance <= approx_factor) {
             (*local_matches)++;
         }
-#endif
     }
 
     free(column);
 }
 
-extern "C" int search_pattern_kernel(char *buf, int n_bytes, char *my_pattern,
-                                     int pattern_length, int approx_factor,
-                                     int *local_matches) {
+extern "C" int *invoke_kernel(char *buf, int n_bytes, char *my_pattern,
+                              int pattern_length, int approx_factor,
+                              int *local_matches) {
     // Allocate arrays in device memory
     char *d_buf;
     cudaMalloc(&d_buf, n_bytes);
@@ -100,19 +95,35 @@ extern "C" int search_pattern_kernel(char *buf, int n_bytes, char *my_pattern,
         d_buf, d_pattern, d_local_matches, n_bytes, pattern_length,
         approx_factor);
 
-    // Copy result from device memory to host memory
-    cudaMemcpy(local_matches, d_local_matches, 1 * sizeof(int),
-               cudaMemcpyDeviceToHost);
-
 #if DEBUG_CUDA
-    printf("DEBUG_CUDA: Matches found in the first %d bytes = %d\n", n_bytes,
-           *local_matches);
+    printf("DEBUG_CUDA: Kernel invoked - &d_local_matches=%ld\n",
+           d_local_matches);
 #endif
 
     // Free device memory
     cudaFree(d_buf);
     cudaFree(d_pattern);
+
+    return d_local_matches;
+}
+
+extern "C" void write_kernel_result(int *local_matches, int *d_local_matches) {
+#if DEBUG_CUDA
+    printf(
+        "DEBUG_CUDA: getting result from device address &d_local_matches=%ld\n",
+        d_local_matches);
+#endif
+
+    // Copy result from device memory to host memory
+    cudaMemcpy(local_matches, d_local_matches, 1 * sizeof(int),
+               cudaMemcpyDeviceToHost);
+
+#if DEBUG_CUDA
+    printf("DEBUG_CUDA: Matches found = %d\n", *local_matches);
+#endif
+
+    // Free remaining device pointer
     cudaFree(d_local_matches);
 
-    return 0;
+    return;
 }

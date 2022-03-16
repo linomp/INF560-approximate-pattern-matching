@@ -30,9 +30,10 @@
 #define APM_DEBUG_ALLOC 0
 #define APM_DEBUG_BYTES 0
 
-int search_pattern_kernel(char *buf, int n_bytes, char *my_pattern,
-                          int pattern_length, int approx_factor,
-                          int *local_matches);
+int *invoke_kernel(char *buf, int n_bytes, char *my_pattern, int pattern_length,
+                   int approx_factor, int *local_matches);
+
+void write_kernel_result(int *local_matches, int *d_local_matches);
 
 int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
                                int cuda_device_exists) {
@@ -307,13 +308,15 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
 
             /* Initialize the number of matches to 0 */
             local_matches = 0;
+            int *device_result_address;
+            int device_result = 0;
 
             // Overall idea: if there is a cuda device, it takes on
             // the first half of the workload + "ghost cells"
             if (cuda_device_exists) {
-                search_pattern_kernel(buf, (n_bytes / 2) + (pattern_length - 1),
-                                      my_pattern, pattern_length, approx_factor,
-                                      &local_matches);
+                device_result_address = invoke_kernel(
+                    buf, (n_bytes / 2) + (pattern_length - 1), my_pattern,
+                    pattern_length, approx_factor, &device_result);
             }
 
             /* Process the input data with OpenMP Threads */
@@ -358,6 +361,11 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
                     }
                 }
                 free(column);
+            }
+
+            if (cuda_device_exists) {
+                write_kernel_result(&device_result, device_result_address);
+                local_matches += device_result;
             }
 
 #if APM_DEBUG
