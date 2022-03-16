@@ -1,7 +1,7 @@
 # To run bash sync_all_Paolo
 
-ssh paolo.calcagni@allemagne.polytechnique.fr 'cd Desktop; rm -rf Progetto; mkdir Progetto; exit'
+ssh paolo.calcagni@albatros.polytechnique.fr 'cd Desktop; rm -rf Progetto; mkdir Progetto; exit'
 
 cd ./scripts
 cd ../
-scp -r ./* paolo.calcagni@allemagne.polytechnique.fr:Desktop/Progetto
+scp -r ./* paolo.calcagni@albatros.polytechnique.fr:Desktop/Progetto

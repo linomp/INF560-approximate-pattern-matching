@@ -13,6 +13,7 @@
 #define DEBUGCHARACTERS 0
 #define DEBUGBYTEOPENMP 0
 #define DEBUGOPENMPPOINTERS 0
+#define DEBUGGPU 1
 
 int searchPatternsInPieceDatabase(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
                                   int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank,
@@ -243,19 +244,25 @@ int database_over_ranks(int argc, char **argv, int myRank,
     firstprivate(indexFinishMyPieceWithoutExtra, indexStartMyPiece, n_bytes, \
                  approx_factor, nb_patterns, numberProcesses, myRank)        \
         shared(buf, pattern, stderr, ompi_mpi_comm_world, ompi_mpi_int, \
-               numbersOfMatch)
+               numbersOfMatch, cuda_device_exists)
         {
 
             int indexActualThread = omp_get_thread_num();
             int numberThreads = omp_get_num_threads();
 
-            if (numberThreads > 1 && nb_patterns > 1) { // Otherwise there is no sense
+            if (cuda_device_exists && numberThreads > 1 && nb_patterns > 1) { // Otherwise there is no sense
 
                 int lastPatternAnalyzedByGPU = nb_patterns /
                                                2; // If we have 7 pattern, we tell the GPU to take patterns from 1 to 3, and the threads between 4 and 7 will be spread over the threads.
                 int firstPatternAnalyzedByThreads = nb_patterns / 2 + 1;
 
-                if (indexActualThread == 0) { // Thread which takes care of GPU
+#if DEBUGGPU
+                printf("Using the GPU.");
+                printf("GPU will look for patterns from 1 to %d.\n", lastPatternAnalyzedByGPU);
+                printf("Other Threads will look for patterns from %d to %d.\n", firstPatternAnalyzedByThreads, nb_patterns);
+#endif
+
+                if (indexActualThread == 0) { // Thread 0 always takes care of GPU
                     int sizePatterns[nb_patterns];
                     for (i = 0; i < nb_patterns; i++) {
                         sizePatterns[i] = strlen(pattern[i]);
@@ -263,13 +270,13 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
                     int *numberOfMatchesGPU = searchPatternsInPieceDatabase(buf, n_bytes, pattern, nb_patterns,
                                                                             lastPatternAnalyzedByGPU, sizePatterns,
-                    int indexFinishMyPieceWithoutExtra,
-                    int myRank,
-                    int numberProcesses,
-                    int indexStartMyPiece,
-                    int approx_factor);
+                                                                            indexFinishMyPieceWithoutExtra,
+                                                                            myRank,
+                                                                            numberProcesses,
+                                                                            indexStartMyPiece,
+                                                                            approx_factor);
 
-                    for(i = 0; i < lastPatternAnalyzedByGPU; i++){
+                    for (i = 0; i < lastPatternAnalyzedByGPU; i++) {
                         numbersOfMatch[i] = numberOfMatchesGPU[i];
                     }
 
@@ -399,8 +406,11 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
             } else { // If I have only one thread I use CPU and not GPU. It should be faster.
 
-#pragma omp for schedule(static)
+#if DEBUGGPU
+                printf("Not using GPU. This means that there is no GPU, or there is just one pattern or there is just one thread.");
+#endif
 
+#pragma omp for schedule(static)
                 for (i = 0; i < nb_patterns; i++) {
                     double timestampStart;
                     double timestampFinish;
