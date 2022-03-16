@@ -9,7 +9,7 @@
 
 #include <cstdio>
 
-#define DEBUG_CUDA 1
+#define DEBUG_CUDA 0
 
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
