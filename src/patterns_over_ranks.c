@@ -225,7 +225,7 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
             rank, world_size, atoi(getenv("OMP_NUM_THREADS")), t2 - t1);
 #endif
         for (i = 0; i < nb_patterns; i++) {
-            printf("Number of matches for pattern <%.40s>: %d\n", pattern[i],
+            printf("Number of matches for pattern <%.100s>: %d\n", pattern[i],
                    n_matches[i]);
         }
     } else {

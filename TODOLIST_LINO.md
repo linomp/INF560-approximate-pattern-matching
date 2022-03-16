@@ -8,13 +8,15 @@
 
 - [X] Implement the model explained in test cases in the code. You already find the pseudo-code, so it should be easy. NOTE: The new workflow for multiple patterns work also for the case of only 1 pattern. Check it but I should be right (to understand better you could find useful to compare the number of threads lost and the ratioHardwareOptimizationApproachChosen). In this case in the code you can avoid to differentiate when we have 1 or multiple patterns (But leave the number of threads lost in excel file).
 
-- [ ] Since I changed the data inside the big database, you should re-run the tests of big database and update the results in the excel. I changed the size since with both multiple threads and multiple ranks it was too little. Also we should make it future-proof for GPU.
+- [X] Since I changed the data inside the big database, you should re-run the tests of big database and update the results in the excel. I changed the size since with both multiple threads and multiple ranks it was too little. Also we should make it future-proof for GPU.
 
-- [ ] Run the new scripts I added (folder ranks_threads in both big and medium database) and update result in excel.
+- [X] Run the new scripts I added (folder ranks_threads in both big and medium database) and update result in excel.
 
-- [ ] Add some other hybrid scripts (ranks_threads) so we can be sure of the correctness of the algorithm. Useless to say, be sure to do this after have understood how things work reading the test cases.
+- [X] Add some other hybrid scripts (ranks_threads) so we can be sure of the correctness of the algorithm. Useless to say, be sure to do this after have understood how things work reading the test cases.
 
-- [ ] Implement GPU in your code in a branch or somewhere else. Merge after you finish.
+- [X] Implement GPU in your code in a branch or somewhere else. Merge after you finish.
+
+- [ ] move CUDA calls into parallel region
 
 # SUGGESTION
 

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# bash scripts/medium/4p/ranks_threads
+
+make
+
+export apm_executable=./apm_parallel
+export data_dir=./dna
+
+export N=5
+export n=9
+
+echo "Running PATTERNS_OVER_RANKS"
+OMP_NUM_THREADS=8 salloc -N $N -n $n mpirun $apm_executable 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) "PATTERNS_OVER_RANKS"
+echo " "
+
+echo "Running DB_OVER_RANKS"
+OMP_NUM_THREADS=8 salloc -N $N -n $n mpirun $apm_executable 0 $data_dir/small_chrY_medium.fa $(cat $data_dir/line_10.fa) "DB_OVER_RANKS"
+echo " "

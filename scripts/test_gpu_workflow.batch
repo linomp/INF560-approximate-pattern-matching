@@ -12,3 +12,7 @@ export data_dir=./dna
 echo "Running WORKFLOW TEST"
 OMP_NUM_THREADS=4 salloc -N 2 -n 3 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
 echo " "
+
+echo "Running SEQUENTIAL"
+./apm_sequential 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
+echo " "

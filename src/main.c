@@ -13,8 +13,8 @@
 
 #include "approaches.h"
 
-#define DEBUG_APPROACH_CHOSEN 1
-#define USE_GPU 1
+#define DEBUG_APPROACH_CHOSEN 0
+#define USE_GPU 0
 
 void getDeviceCount(int *deviceCountPtr);
 void setDevice(int rank, int deviceCount);
@@ -47,7 +47,9 @@ int main(int argc, char **argv) {
                 "Minimum number of MPI ranks is 2 (Master Rank is currently "
                 "only used to distribute work)\n");
         }
-        if (MPI_Finalize() != MPI_SUCCESS) {
+
+        mpi_call_result = MPI_Finalize();
+        if (mpi_call_result != MPI_SUCCESS) {
             printf("MPI Error: %d\n", mpi_call_result);
             return 1;
         }
@@ -123,11 +125,9 @@ int main(int argc, char **argv) {
 #endif
         // Call the decided strategy
         if (use_patterns_over_ranks) {
-            argc -= 1;
             res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
                                              USE_GPU && (deviceCount >= 1));
         } else {
-            argc -= 1;
             res = database_over_ranks(argc, argv, rank, world_size);
         }
     }

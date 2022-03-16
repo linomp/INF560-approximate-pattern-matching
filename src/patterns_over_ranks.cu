@@ -112,7 +112,7 @@ extern "C" int search_pattern_kernel(char *buf, int n_bytes, char *my_pattern,
     // Free device memory
     cudaFree(d_buf);
     cudaFree(d_pattern);
-    cudaFree(local_matches);
+    cudaFree(d_local_matches);
 
     return 0;
 }
