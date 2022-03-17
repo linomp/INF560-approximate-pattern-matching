@@ -10,6 +10,8 @@
 #include <cstdio>
 
 #define DEBUG_CUDA 0
+#define DEBUG_CUDA_RESULT 0
+#define TEST_PERFORMANCE_NO_LEVENSHTEIN 0
 
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
@@ -30,6 +32,9 @@ __global__ void ComputeMatches(char *buf, char *pattern, int *local_matches,
 
     for (j = blockDim.x * blockIdx.x + threadIdx.x; j < n_bytes - approx_factor;
          j += gridDim.x * blockDim.x) {
+#if TEST_PERFORMANCE_NO_LEVENSHTEIN
+        continue;
+#endif
         int size;
 
         size = pattern_length;
@@ -72,9 +77,9 @@ extern "C" int *invoke_kernel(char *buf, int n_bytes, char *my_pattern,
                               int *local_matches) {
     // Allocate arrays in device memory
     char *d_buf;
-    cudaMalloc(&d_buf, n_bytes);
+    cudaMalloc(&d_buf, n_bytes * sizeof(char));
     char *d_pattern;
-    cudaMalloc(&d_pattern, pattern_length);
+    cudaMalloc(&d_pattern, pattern_length * sizeof(char));
     int *d_local_matches;
     cudaMalloc(&d_local_matches, 1 * sizeof(int));
 
@@ -118,7 +123,7 @@ extern "C" void write_kernel_result(int *local_matches, int *d_local_matches) {
     cudaMemcpy(local_matches, d_local_matches, 1 * sizeof(int),
                cudaMemcpyDeviceToHost);
 
-#if DEBUG_CUDA
+#if DEBUG_CUDA_RESULT
     printf("DEBUG_CUDA: Matches found = %d\n", *local_matches);
 #endif
 

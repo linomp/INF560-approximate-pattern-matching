@@ -1,0 +1,22 @@
+#!/bin/bash
+
+export data_dir=./dna
+export N=3
+export n=7
+
+echo "Running PATTERNS_OVER_RANKS NO GPU"
+make > /dev/null
+OMP_NUM_THREADS=8 salloc -N $N -n $n mpirun ./apm_parallel 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "PATTERNS_OVER_RANKS"
+echo " "
+
+echo "Running PATTERNS_OVER_RANKS WITH GPU"
+make clean > /dev/null
+make USE_GPU_FLAG=-DUSE_GPU_FLAG > /dev/null
+OMP_NUM_THREADS=8 salloc -N $N -n $n mpirun ./apm_parallel 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "PATTERNS_OVER_RANKS"
+echo " "
+
+echo "Running PATTERNS_OVER_RANKS WITH GPU 75%"
+make clean > /dev/null
+make USE_GPU_FLAG=-DUSE_GPU_FLAG GPU_JOB_SIZE=-DGPU_JOB_SIZE_75 > /dev/null
+OMP_NUM_THREADS=8 salloc -N $N -n $n mpirun ./apm_parallel 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "PATTERNS_OVER_RANKS"
+echo " "

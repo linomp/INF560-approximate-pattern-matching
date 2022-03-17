@@ -1,0 +1,9 @@
+#!/bin/bash
+
+make apm_sequential
+
+export data_dir=./dna
+
+echo "Running SEQUENTIAL w/o salloc"
+./apm_sequential 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa)
+echo " "
