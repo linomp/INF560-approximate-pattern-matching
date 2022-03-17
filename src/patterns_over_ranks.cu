@@ -93,7 +93,7 @@ extern "C" int *invoke_kernel(char *buf, int n_bytes, char *my_pattern,
     cudaMemcpy(d_local_matches, local_matches, 1 * sizeof(int),
                cudaMemcpyHostToDevice);
 
-    int threadsPerBlock = 256;
+    int threadsPerBlock = 32;
     int blocksPerGrid = (n_bytes + threadsPerBlock - 1) / threadsPerBlock;
 
     ComputeMatches<<<blocksPerGrid, threadsPerBlock>>>(

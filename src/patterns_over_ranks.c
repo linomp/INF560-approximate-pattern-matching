@@ -311,11 +311,8 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
             int *device_result_address;
             int device_result = 0;
 
-#ifdef GPU_JOB_SIZE_75
+            // Best ratio determined by experiments
             int gpu_job_size = (3 * n_bytes / 4);
-#else
-            int gpu_job_size = (n_bytes / 2);
-#endif
 
             // Overall idea: if there is a cuda device, it takes on
             // the first half of the workload + "ghost cells"
