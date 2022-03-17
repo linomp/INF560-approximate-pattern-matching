@@ -1,0 +1,19 @@
+#!/bin/bash
+
+export apm_executable=./apm_parallel
+export data_dir=./dna
+
+make clean
+make
+
+echo "Running SEQUENTIAL"
+./apm_sequential 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa)
+echo " "
+
+echo "Running PATTERNS_OVER_RANKS TEST"
+OMP_NUM_THREADS=4 salloc -N 2 -n 3 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "PATTERNS_OVER_RANKS"
+echo " "
+
+echo "Running DB_OVER_RANKS TEST"
+OMP_NUM_THREADS=4 salloc -N 2 -n 3 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "DB_OVER_RANKS"
+echo " "

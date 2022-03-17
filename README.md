@@ -28,3 +28,65 @@ Parallelization of the [Approximate Pattern Matching](https://www.enseignement.p
 ### Decision criteria
 
 Criteria for deciding between the two approaches at runtime is documented in: [Workflow](./Workflow.md)
+
+## Compiling & Running
+
+To compile, at the root of this directory type:
+
+`make`
+
+To search and use a GPU, a flag is required:
+
+`make USE_GPU_FLAG=-DUSE_GPU_FLAG`
+
+_Note: the code falls-back to only MPI + Open MP in case of no GPU detected._
+
+The executable can be run like this:
+
+`OMP_NUM_THREADS=4 salloc -N 2 -n 3 mpirun ./apm_parallel 0 ./dna/small_chrY_x100.fa <pattern 1> <pattern 2>`
+
+We provide a simple test script, run it with:
+
+`bash scripts/basic_test.batch`
+
+And it should give you an output like the following:
+
+```
+Running SEQUENTIAL
+Approximate Pattern Mathing: looking for 6 pattern(s) in file ./dna/small_chrY_x100.fa w/ distance of 0
+APM done in 4.111790 s
+Number of matches for pattern <QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ>: 0
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+
+Running PATTERNS_OVER_RANKS TEST
+salloc: Granted job allocation 34357
+Approximate Pattern Matching: looking for 6 pattern(s) in file ./dna/small_chrY_x100.fa w/ distance of 0
+
+(Rank 0) - TOTAL TIME using 3 mpi_ranks and 4 omp_thread(s) per rank: 1.813988 s
+
+Number of matches for pattern <QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ>: 0
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+salloc: Relinquishing job allocation 34357
+ 
+Running DB_OVER_RANKS TEST
+salloc: Granted job allocation 34358
+Approximate Pattern Mathing: looking for 6 pattern(s) in file ./dna/small_chrY_x100.fa w/ distance of 0
+
+(Rank 0) - TOTAL TIME using 3 mpi_ranks and 4 omp_thread(s) per rank: 1.684821 s
+
+Number of matches for pattern <QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ>: 0
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+Number of matches for pattern <CACCCCCAAAATATAGATTCTTCCCCAATTTATGTCTGAAAACAGGACCC>: 4
+salloc: Relinquishing job allocation 34358
+```

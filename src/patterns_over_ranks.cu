@@ -11,7 +11,7 @@
 
 #define DEBUG_CUDA 0
 #define DEBUG_CUDA_RESULT 0
-#define TEST_PERFORMANCE_NO_LEVENSHTEIN 1
+#define TEST_PERFORMANCE_NO_LEVENSHTEIN 0
 
 #define MIN3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
