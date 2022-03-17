@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     if (!strcmp(chosen_approach, "DB_OVER_RANKS")) {
         // decrease argc so that processing functions ignore last flag
         argc -= 1;
-        res = database_over_ranks(argc, argv, rank, world_size);
+        res = database_over_ranks(argc, argv, rank, world_size, USE_GPU && (deviceCount >= 1));
     } else if (!strcmp(chosen_approach, "PATTERNS_OVER_RANKS")) {
         // decrease argc so that processing functions ignore last flag
         argc -= 1;
@@ -133,7 +133,8 @@ int main(int argc, char **argv) {
             res = patterns_over_ranks_hybrid(argc, argv, rank, world_size,
                                              USE_GPU && (deviceCount >= 1));
         } else {
-            res = database_over_ranks(argc, argv, rank, world_size);
+            argc -= 1;
+            res = database_over_ranks(argc, argv, rank, world_size, USE_GPU && (deviceCount >= 1));
         }
     }
 

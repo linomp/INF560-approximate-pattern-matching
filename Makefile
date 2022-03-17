@@ -16,7 +16,8 @@ SRC= main.c patterns_over_ranks.c database_over_ranks.c utils.c sequential.c
 
 OBJ= $(OBJ_DIR)/patterns_over_ranks.o $(OBJ_DIR)/database_over_ranks.o $(OBJ_DIR)/main.o $(OBJ_DIR)/utils.o
 
-all: $(OBJ_DIR) patterns_over_ranks_cuda cuda_utils apm_parallel apm_sequential 
+all: $(OBJ_DIR) patterns_over_ranks_cuda database_over_ranks_cuda cuda_utils apm_parallel apm_sequential
+
 
 $(OBJ_DIR):
 	mkdir $(OBJ_DIR)
@@ -33,6 +34,9 @@ apm_sequential:$(OBJ_DIR)/utils.o $(OBJ_DIR)/sequential.o
 database_over_ranks:$(OBJ)
 	$(MPI_CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
+database_over_ranks_cuda:
+	$(NV_CC) $(NV_FLAGS) $(SRC_DIR)/database_over_ranks.cu -o $(OBJ_DIR)/database_over_ranks_cuda.o
+
 patterns_over_ranks:$(OBJ)
 	$(MPI_CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
@@ -43,7 +47,7 @@ cuda_utils:
 	$(NV_CC) $(NV_FLAGS) $(SRC_DIR)/cuda_utils.cu -o $(OBJ_DIR)/cuda_utils.o
 
 apm_parallel: $(OBJ)
-	$(MPI_CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(OBJ_DIR)/cuda_utils.o $(OBJ_DIR)/patterns_over_ranks_cuda.o
+	$(MPI_CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(OBJ_DIR)/cuda_utils.o $(OBJ_DIR)/patterns_over_ranks_cuda.o $(OBJ_DIR)/database_over_ranks_cuda.o
 
 clean:
 	rm -f patterns_over_ranks_cuda cuda_utils apm_parallel apm_sequential apm_parallel_gpu $(OBJ) ; rm -rf $(OBJ_DIR)
