@@ -6,7 +6,7 @@ CC=gcc
 SEQ_FLAGS=-O3 -I$(HEADER_DIR) -w
 
 MPI_CC=mpicc
-CFLAGS=-O3 -I$(HEADER_DIR) -w -fopenmp $(USE_GPU_FLAG) 
+CFLAGS=-O3 -I$(HEADER_DIR) -w -fopenmp $(USE_GPU_FLAG) $(GPU_JOB_SIZE)
 LDFLAGS=-lm -lcudart -L/usr/local/cuda/lib64
 
 NV_CC=nvcc

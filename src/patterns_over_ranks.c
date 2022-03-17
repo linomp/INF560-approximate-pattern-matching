@@ -311,27 +311,36 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
             int *device_result_address;
             int device_result = 0;
 
+#ifdef GPU_JOB_SIZE_75
+            int gpu_job_size = (3 * n_bytes / 4);
+#else
+            int gpu_job_size = (n_bytes / 2);
+#endif
+
             // Overall idea: if there is a cuda device, it takes on
             // the first half of the workload + "ghost cells"
             if (cuda_device_exists) {
                 device_result_address = invoke_kernel(
-                    buf, (n_bytes / 2) + (pattern_length - 1), my_pattern,
+                    buf, gpu_job_size + (pattern_length - 1), my_pattern,
                     pattern_length, approx_factor, &device_result);
             }
 
             /* Process the input data with OpenMP Threads */
 #pragma omp parallel default(none)                                         \
     firstprivate(rank, n_bytes, approx_factor, pattern_length, my_pattern, \
-                 cuda_device_exists) shared(buf, local_matches)
+                 cuda_device_exists, gpu_job_size, buf) shared(local_matches)
             {
                 rank = rank;
                 n_bytes = n_bytes;
+                gpu_job_size = gpu_job_size;
                 pattern_length = pattern_length;
                 buf = buf;
 
                 // Overall idea: if there is a cuda device, omp threads take on
                 // just the second half of the workload + "ghost cells"
-                int starting_point = cuda_device_exists ? (n_bytes / 2) : 0;
+                int starting_point = cuda_device_exists
+                                         ? (gpu_job_size - (pattern_length + 1))
+                                         : 0;
 
                 approx_factor = approx_factor;
                 my_pattern = my_pattern;
@@ -340,7 +349,10 @@ int patterns_over_ranks_hybrid(int argc, char **argv, int rank, int world_size,
 
                 int *column = (int *)malloc((pattern_length + 1) * sizeof(int));
 
-#pragma omp for schedule(static, 1)
+                int chunk_size = ((n_bytes - approx_factor) - starting_point) /
+                                 omp_get_num_threads();
+
+#pragma omp for schedule(static, chunk_size)
                 for (j = starting_point; j < n_bytes - approx_factor; j++) {
 #if APM_DEBUG_BYTES
                     printf("(Rank %d - Thread %d) - processing byte %d\n", rank,
