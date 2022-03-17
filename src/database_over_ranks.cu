@@ -22,13 +22,10 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
               int *numbersOfMatch, int indexFinishMyPieceWithoutExtra, int myRank, int numberProcesses,
               int indexStartMyPiece, int approx_factor) {
 
-
-    // I analyze the second half of the patterns
-    // for (i = 0; i < lastPatternAnalyzedByGPU; i++) {
-
     int i;
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
+    // I analyze the second half of the patterns
     if (i < lastPatternAnalyzedByGPU) {
 
         if (TESTPERFORMANCE_NO_LEVENSHTEIN) {
@@ -89,8 +86,6 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
             // Traverse the input data up to the end of the file
             n_bytes = indexFinishMyPieceWithExtra;
 
-            // It's not possible to parallelize with OpenMP this for since
-            // the cycles are interconnected.
             int r;
             for (r = indexStartMyPiece; r < n_bytes - approx_factor; r++) {
 
@@ -105,6 +100,8 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
                 // distance = levenshtein(pattern[i], &buf[r], size, column);
 
                 unsigned int x, y, lastdiag, olddiag;
+                char * s1 = pattern[i];
+                char *s2 = &buf[r];
 
 #pragma unroll
                 for (y = 1; y <= size; y++) {
@@ -116,9 +113,8 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
                     lastdiag = x - 1;
                     for (y = 1; y <= size; y++) {
                         olddiag = column[y];
-                        column[y] = MIN3(
-                                column[y] + 1, column[y - 1] + 1,
-                                lastdiag + (pattern[i][y - 1] == (&buf[r])[x - 1] ? 0 : 1));
+                        column[y] = MIN3(column[y] + 1, column[y - 1] + 1,
+                                         lastdiag + (s1[y - 1] == s2[x - 1] ? 0 : 1));
                         lastdiag = olddiag;
                     }
                 }
@@ -133,6 +129,7 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
 
             free(column);
         }
+
     }
 
 }
@@ -140,34 +137,34 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
 
 extern "C" int initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
                              int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank, int numberProcesses,
-                             int indexStartMyPiece, int approx_factor) {
+                             int indexStartMyPiece, int approx_factor, int * numberOfMatchesInitialized) {
 
 #if DEBUG_CUDA
     printf("CUDA_DEBUG. Starting allocating data structures and memory transfers...\n");
 #endif
 
-    // Allocate space for the buffer and copy data
-    char *d_buf;
-    cudaMalloc(&d_buf, n_bytes);
-    cudaMemcpy(d_buf, buf, n_bytes, cudaMemcpyHostToDevice);
-
     // I need to know the size of patterns to copy the data. So I copy an array containing all the sizes of the patterns
     int *d_sizePatterns;
     cudaMalloc(&d_sizePatterns, nb_patterns * sizeof(int));
-    cudaMemcpy(d_sizePatterns, sizePatterns, nb_patterns, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_sizePatterns, sizePatterns, nb_patterns * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Allocate space for the buffer and copy data
+    char *d_buf;
+    cudaMalloc(&d_buf, n_bytes * sizeof(char));
+    cudaMemcpy(d_buf, buf, n_bytes * sizeof(char), cudaMemcpyHostToDevice);
 
     // Allocate array where to save the number of matches
-    cudaMalloc(&d_numbersOfMatch, nb_patterns * sizeof(int));
+    cudaMallocHost(&d_numbersOfMatch, nb_patterns * sizeof(int));
+    cudaMemcpy(d_numbersOfMatch, numberOfMatchesInitialized, nb_patterns * sizeof(int), cudaMemcpyHostToDevice);
 
     // Allocate array of patterns: that is an array of arrays
-    char *d_pattern;
-    cudaMalloc(&d_pattern, nb_patterns * sizeof(char *));
+    char **d_pattern;
+    cudaMallocHost(&d_pattern, nb_patterns * sizeof(char *));
 
     // Allocate space for each pattern and copy it
     for (int i = 0; i < nb_patterns; i++) {
-        char *patternInUse = &d_pattern[i];
-        cudaMalloc(&patternInUse, sizePatterns[i] * sizeof(char));
-        cudaMemcpy(&d_pattern[i], pattern[i], sizePatterns[i], cudaMemcpyHostToDevice);
+        cudaMallocHost(&(d_pattern[i]), sizePatterns[i] * sizeof(char));
+        cudaMemcpy(d_pattern[i], pattern[i], sizePatterns[i] * sizeof(char), cudaMemcpyHostToDevice);
     }
 
     int sizeGrid = 256;
@@ -177,7 +174,7 @@ extern "C" int initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patt
     printf("CUDA_DEBUG. Going to call the kernel code\n");
 #endif
 
-    searchPattern<<<sizeGrid, sizeBlocks>>>(d_buf, n_bytes, &d_pattern, nb_patterns, lastPatternAnalyzedByGPU,
+    searchPattern<<<sizeGrid, sizeBlocks>>>(d_buf, n_bytes, d_pattern, nb_patterns, lastPatternAnalyzedByGPU,
                                             d_sizePatterns, d_numbersOfMatch, indexFinishMyPieceWithoutExtra, myRank,
                                             numberProcesses, indexStartMyPiece, approx_factor);
 

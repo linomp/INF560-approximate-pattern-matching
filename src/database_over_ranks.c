@@ -17,7 +17,7 @@
 
 int initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
                   int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank,
-                  int numberProcesses, int indexStartMyPiece, int approx_factor);
+                  int numberProcesses, int indexStartMyPiece, int approx_factor, int * numberOfMatchesInitialized);
 
 int database_over_ranks(int argc, char **argv, int myRank,
                         int numberProcesses, int cuda_device_exists) {
@@ -260,6 +260,11 @@ int database_over_ranks(int argc, char **argv, int myRank,
                 sizePatterns[i] = strlen(pattern[i]);
             }
 
+            int numberOfMatchesInitialized[nb_patterns];
+            for(i = 0; i < nb_patterns; i++){
+                numberOfMatchesInitialized[i] = 0;
+            }
+
             // Setup the GPU and execute kernel code
             initializeGPU(buf, n_bytes, pattern, nb_patterns,
                           lastPatternAnalyzedByGPU, sizePatterns,
@@ -267,7 +272,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
                           myRank,
                           numberProcesses,
                           indexStartMyPiece,
-                          approx_factor);
+                          approx_factor, numberOfMatchesInitialized);
 #if DEBUGGPU
             // Print the info just one time.
             printf("Using the GPU.\n");
