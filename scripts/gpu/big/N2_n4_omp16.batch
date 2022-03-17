@@ -5,6 +5,7 @@ export N=2
 export n=4
 
 echo "Running PATTERNS_OVER_RANKS NO GPU"
+make clean > /dev/null
 make > /dev/null
 OMP_NUM_THREADS=16 salloc -N $N -n $n mpirun ./apm_parallel 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "PATTERNS_OVER_RANKS"
 echo " "

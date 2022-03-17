@@ -1,18 +1,19 @@
 #!/bin/bash
 
-make
-
 export apm_executable=./apm_parallel
 export data_dir=./dna
 
+make clean
+make USE_GPU_FLAG=-DUSE_GPU_FLAG
 
-# 2 Active MPI_ranks, 4 threads, 4 patterns
-# expected ratioPatterns = 0 & ratioDatabase = 0 -> choose DB Over Ranks by default
+echo "Running PATTERNS_OVER_RANKS + GPU WORKFLOW TEST"
+OMP_NUM_THREADS=4 salloc -N 2 -n 3 mpirun $apm_executable 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "PATTERNS_OVER_RANKS"
+echo " "
 
-echo "Running WORKFLOW TEST"
-OMP_NUM_THREADS=4 salloc -N 2 -n 3 mpirun $apm_executable 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) "PATTERNS_OVER_RANKS"
+echo "Running DB_OVER_RANKS + GPU WORKFLOW TEST"
+OMP_NUM_THREADS=4 salloc -N 2 -n 3 mpirun $apm_executable 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "DB_OVER_RANKS"
 echo " "
 
 #echo "Running SEQUENTIAL"
-#./apm_sequential 0 $data_dir/small_chrY_x100.fa $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa) $(cat $data_dir/line_10.fa)
+#./apm_sequential 0 $data_dir/small_chrY_bigger.fa $(cat $data_dir/line_non_existent.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) $(cat $data_dir/line_20783.fa) "PATTERNS_OVER_RANKS"
 #echo " "
