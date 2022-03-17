@@ -29,13 +29,13 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
     if (i < lastPatternAnalyzedByGPU) {
 
         if (TESTPERFORMANCE_NO_LEVENSHTEIN) {
-            // Sleep 1 microsecond
-
-            // This works just with Compute Capability > 7.0
-            // unsigned int ns = 1000;
-            // __nanosleep(ns);
-
             /*
+
+             I should sleep for 1 microsecond
+
+            The following code works just with Compute Capability >= 7.0
+            unsigned int ns = 1000;
+            __nanosleep(ns);
 
             Without the possibility to use nanosleep the only thing that it's possible to do is to wait an arbitrary number of clocks. But we don't know how many clocks correspond to a sleep of 1 microsecond.
             I could try through measurements to understand how many clocks correspond to 1 microsecond, but this is not so reliable. Different GPU can have different velocity (maybe one is running higher clock speed).
@@ -96,8 +96,7 @@ searchPattern(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastP
                     size = n_bytes - r;
                 }
 
-                // I cannot call directly levenshtein function
-                // distance = levenshtein(pattern[i], &buf[r], size, column);
+                // I cannot call directly levenshtein function in GPU Code
 
                 unsigned int x, y, lastdiag, olddiag;
                 char * s1 = pattern[i];
@@ -143,12 +142,13 @@ extern "C" int initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patt
     printf("CUDA_DEBUG. Starting allocating data structures and memory transfers...\n");
 #endif
 
-    // I need to know the size of patterns to copy the data. So I copy an array containing all the sizes of the patterns
+    // I need to know the size of patterns to copy the data.
+    // So I copy an array containing all the sizes of the patterns.
     int *d_sizePatterns;
     cudaMalloc(&d_sizePatterns, nb_patterns * sizeof(int));
     cudaMemcpy(d_sizePatterns, sizePatterns, nb_patterns * sizeof(int), cudaMemcpyHostToDevice);
 
-    // Allocate space for the buffer and copy data
+    // Allocate space for the buffer and copy data.
     char *d_buf;
     cudaMalloc(&d_buf, n_bytes * sizeof(char));
     cudaMemcpy(d_buf, buf, n_bytes * sizeof(char), cudaMemcpyHostToDevice);
@@ -157,7 +157,8 @@ extern "C" int initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patt
     cudaMallocHost(&d_numbersOfMatch, nb_patterns * sizeof(int));
     cudaMemcpy(d_numbersOfMatch, numberOfMatchesInitialized, nb_patterns * sizeof(int), cudaMemcpyHostToDevice);
 
-    // Allocate array of patterns: that is an array of arrays
+    // Allocate array of patterns: that is an array of arrays.
+    // Need to use cudaMallocHost otherwise the following malloc throws a Segmentation Fault
     char **d_pattern;
     cudaMallocHost(&d_pattern, nb_patterns * sizeof(char *));
 
@@ -168,7 +169,7 @@ extern "C" int initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patt
     }
 
     int sizeGrid = 256;
-    int sizeBlocks = 1;
+    int sizeBlocks = 10;
 
 #if DEBUG_CUDA
     printf("CUDA_DEBUG. Going to call the kernel code\n");
@@ -196,6 +197,7 @@ getGPUResult(int nb_patterns) {
     // Allocate local structure where to save the number of matches
     int *numbersOfMatch = (int *) malloc(nb_patterns * sizeof(int));
 
+    // Copy the results from the GPU
     cudaMemcpy(numbersOfMatch, d_numbersOfMatch, nb_patterns * sizeof(int),
                cudaMemcpyDeviceToHost);
 

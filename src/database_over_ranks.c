@@ -17,7 +17,9 @@
 
 int initializeGPU(char *buf, int n_bytes, char **pattern, int nb_patterns, int lastPatternAnalyzedByGPU,
                   int *sizePatterns, int indexFinishMyPieceWithoutExtra, int myRank,
-                  int numberProcesses, int indexStartMyPiece, int approx_factor, int * numberOfMatchesInitialized);
+                  int numberProcesses, int indexStartMyPiece, int approx_factor, int *numberOfMatchesInitialized);
+
+int * getGPUResult(int nb_patterns);
 
 int database_over_ranks(int argc, char **argv, int myRank,
                         int numberProcesses, int cuda_device_exists) {
@@ -117,8 +119,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
         int size_database = n_bytes;
         int numberPiecesDatabase =
                 numberProcesses -
-                1;  // Number of pieces we should divide the database into. The
-        // number of processes less the rank 0.
+                1;  // Number of pieces we should divide the database into. The number of processes less the rank 0.
         int size_piece;
 
         if (numberProcesses > 1) {
@@ -150,10 +151,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
                 indexStartMyPiece = (j - 1) * size_piece;
                 indexFinishMyPieceWithoutExtra =
                         indexStartMyPiece +
-                        size_piece;  // I don't add here the extra (size_pattern -
-                // 1) but I'll do receiver-side depending on
-                // the pattern (and just for the ranks which
-                // are not the last one).
+                        size_piece;  // I don't add here the extra (size_pattern - 1) but I'll do receiver-side depending on the pattern (and just for the ranks which are not the last one).
             }
 
             int info[2];
@@ -211,7 +209,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
         }
     }
 
-        // If I am not the rank 0
+    // If I am not the rank 0
     else {
         // Read the database
         buf = read_input_file(filename, &n_bytes);
@@ -238,30 +236,36 @@ int database_over_ranks(int argc, char **argv, int myRank,
             numbersOfMatch[i] = 0;
         }
 
+        // Decide if the GPU has to be used.
+        // It's possible to add another variable to this "if": the GPU shouldn't create too much overhead.
+        // The execution time with the GPU should be less than the execution time without the GPU.
+        // This could be achieved with some profiling.
+
         int gpuActuallyUsed;
-        if (cuda_device_exists && nb_patterns > 1) {
+        if (cuda_device_exists && nb_patterns > 1) { // If there is only 1 pattern, GPU is useless. CPU would take care of the only pattern
             gpuActuallyUsed = 1;
         } else {
             gpuActuallyUsed = 0;
         }
 
-        // If we have only one pattern the CPU will take care of the only pattern
         int *addressNumbersOfMatchGPU;
         int lastPatternAnalyzedByGPU;
         int firstPatternAnalyzedByThreads;
         if (gpuActuallyUsed) {
             // Split the patterns through CPU threads and GPU
             lastPatternAnalyzedByGPU = nb_patterns / 2;
-            // If we have 7 pattern, we tell the GPU to take patterns from 1 to 3, and the threads between 4 and 7 will be spread over the threads.
+            // Example: if we have 7 patterns, we tell the GPU to take patterns from 1 to 3, and the threads between 4 and 7 will be spread over the threads.
             firstPatternAnalyzedByThreads = (nb_patterns / 2);
 
+            // Needed to transfer data to the GPU
             int sizePatterns[nb_patterns];
             for (i = 0; i < nb_patterns; i++) {
                 sizePatterns[i] = strlen(pattern[i]);
             }
 
+            // I initialize the array of the GPU here. This could have been done also in database_over_ranks.cu
             int numberOfMatchesInitialized[nb_patterns];
-            for(i = 0; i < nb_patterns; i++){
+            for (i = 0; i < nb_patterns; i++) {
                 numberOfMatchesInitialized[i] = 0;
             }
 
@@ -284,8 +288,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
         }
 
-        // The implementation is correct. However, I don't notice the
-        // improvements of performance that I was expecting.
+        // The implementation is correct. However, I don't notice the improvements of performance that I was expecting.
 #pragma omp parallel default(none) private(i)                                \
     firstprivate(indexFinishMyPieceWithoutExtra, indexStartMyPiece, n_bytes, \
                  approx_factor, nb_patterns, numberProcesses, myRank, addressNumbersOfMatchGPU, lastPatternAnalyzedByGPU, firstPatternAnalyzedByThreads)        \
@@ -302,7 +305,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
 #pragma omp for schedule(static)
 
-                // I analyze the second half of the patterns
+                // Since the GPU analyzes the first part of patterns, the threads analyze the second half of the patterns
                 for (i = firstPatternAnalyzedByThreads; i < nb_patterns; i++) {
                     double timestampStart;
                     double timestampFinish;
@@ -428,6 +431,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
 #endif
 
 #pragma omp for schedule(static)
+                // If I don't have the GPU I have to search for all the patterns.
                 for (i = 0; i < nb_patterns; i++) {
                     double timestampStart;
                     double timestampFinish;
@@ -551,7 +555,7 @@ int database_over_ranks(int argc, char **argv, int myRank,
 
         if (gpuActuallyUsed) {
 
-            // Read GPU Result and merging with the original array of results (numbersOfMatch)
+            // Read GPU results and merging with the original array of results (numbersOfMatch)
             int *numberOfMatchesGPU = getGPUResult(nb_patterns);
 #if DEBUGGPU
             printf("Got the results from GPU.\n");
