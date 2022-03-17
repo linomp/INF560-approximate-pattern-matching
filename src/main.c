@@ -14,7 +14,6 @@
 #include "approaches.h"
 
 #define DEBUG_APPROACH_CHOSEN 0
-#define USE_GPU 1
 
 void getDeviceCount(int *deviceCountPtr);
 void setDevice(int rank, int deviceCount);
@@ -32,6 +31,12 @@ int main(int argc, char **argv) {
     int rank, world_size;
     int res;
     int mpi_call_result;
+
+#ifdef USE_GPU_FLAG
+    int USE_GPU = 1;
+#else
+    int USE_GPU = 0;
+#endif
 
     /* MPI Initialization */
     MPI_Init(&argc, &argv);

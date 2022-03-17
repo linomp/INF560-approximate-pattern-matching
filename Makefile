@@ -3,10 +3,10 @@ HEADER_DIR=include
 OBJ_DIR=obj
 
 CC=gcc
-SEQ_FLAGS=-O3 -I$(HEADER_DIR) -Wall
+SEQ_FLAGS=-O3 -I$(HEADER_DIR) -w
 
 MPI_CC=mpicc
-CFLAGS=-O3 -I$(HEADER_DIR) -Wall -fopenmp
+CFLAGS=-O3 -I$(HEADER_DIR) -w -fopenmp $(USE_GPU_FLAG) 
 LDFLAGS=-lm -lcudart -L/usr/local/cuda/lib64
 
 NV_CC=nvcc
@@ -16,7 +16,7 @@ SRC= main.c patterns_over_ranks.c database_over_ranks.c utils.c sequential.c
 
 OBJ= $(OBJ_DIR)/patterns_over_ranks.o $(OBJ_DIR)/database_over_ranks.o $(OBJ_DIR)/main.o $(OBJ_DIR)/utils.o
 
-all: $(OBJ_DIR) patterns_over_ranks_cuda cuda_utils apm_parallel apm_sequential
+all: $(OBJ_DIR) patterns_over_ranks_cuda cuda_utils apm_parallel apm_sequential 
 
 $(OBJ_DIR):
 	mkdir $(OBJ_DIR)
@@ -46,4 +46,7 @@ apm_parallel: $(OBJ)
 	$(MPI_CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(OBJ_DIR)/cuda_utils.o $(OBJ_DIR)/patterns_over_ranks_cuda.o
 
 clean:
-	rm -f apm_parallel apm_sequential $(OBJ) ; rm -rf $(OBJ_DIR)
+	rm -f patterns_over_ranks_cuda cuda_utils apm_parallel apm_sequential apm_parallel_gpu $(OBJ) ; rm -rf $(OBJ_DIR)
+
+flag:
+	echo $(USE_GPU_FLAG)
